@@ -33,6 +33,7 @@ using namespace common;
 
 static Server *g_server = nullptr;
 
+
 void usage()
 {
   std::cout << "Useage " << std::endl;

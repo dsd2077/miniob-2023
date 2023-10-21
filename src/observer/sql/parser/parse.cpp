@@ -44,6 +44,6 @@ int sql_parse(const char *st, ParsedSqlResult *sql_result);
 
 RC parse(const char *st, ParsedSqlResult *sql_result)
 {
-  sql_parse(st, sql_result);
+  sql_parse(st, sql_result);      // sql_parse函数是调用flex和bicon的规则进行语法解析，没办法进行日期合法性这样细致的检测，所以对date合法性的判断必须放在使用时
   return RC::SUCCESS;
 }

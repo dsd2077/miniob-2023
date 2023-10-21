@@ -103,10 +103,14 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     filter_obj.init_attr(Field(table, field));
     filter_unit->set_left(filter_obj);
   } else {    // "1996-08-01" == 左边为一个值
+    // 对date值的合法性检测
+    if (condition.left_value.attr_type() == DATES && !common::is_valid_date(condition.left_value.get_int())) {
+      return RC::INVALID_ARGUMENT;
+    }
     FilterObj filter_obj;
     filter_obj.init_value(condition.left_value);
     filter_unit->set_left(filter_obj);
-  }
+}
 
   // xxx == birthday  右边为一个属性
   if (condition.right_is_attr) {
@@ -121,6 +125,9 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     filter_obj.init_attr(Field(table, field));
     filter_unit->set_right(filter_obj);
   } else {    // xxx == "1996-08-01"  右边为一个值
+    if (condition.right_value.attr_type() == DATES && !common::is_valid_date(condition.right_value.get_int())) {
+      return RC::INVALID_ARGUMENT;
+    }
     FilterObj filter_obj;
     filter_obj.init_value(condition.right_value);
     filter_unit->set_right(filter_obj);

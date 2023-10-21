@@ -19,8 +19,9 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/comparator.h"
 #include "common/lang/string.h"
 
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "booleans"};
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "booleans"};
 
+// 坑：这个函数没有修改
 const char *attr_type_to_string(AttrType type)
 {
   if (type >= UNDEFINED && type <= FLOATS) {
@@ -53,16 +54,26 @@ Value::Value(bool val)
   set_boolean(val);
 }
 
-Value::Value(const char *s, int len /*= 0*/)
+Value::Value(const char *s, int len /*= 0*/, bool is_date)
 {
-  set_string(s, len);
+  if (is_date) {
+    set_date(s);
+  } else {
+    set_string(s, len);
+  }
 }
 
+// 这里的set_data是用于从磁盘中读取数据后，将其转化为Value对象
+// 因为DATES类型是以INT的形式存储在磁盘中，所以它的处理方式和INT一样
 void Value::set_data(char *data, int length)
 {
   switch (attr_type_) {
     case CHARS: {
       set_string(data, length);
+    } break;
+    case DATES: {
+      num_value_.date_value_ = *(int *)data;
+      length_ = length;
     } break;
     case INTS: {
       num_value_.int_value_ = *(int *)data;
@@ -86,6 +97,12 @@ void Value::set_int(int val)
   attr_type_ = INTS;
   num_value_.int_value_ = val;
   length_ = sizeof(val);
+}
+
+void Value::set_date(int date) {
+  attr_type_ = DATES;
+  num_value_.date_value_ = date;
+  length_ = sizeof(date);
 }
 
 void Value::set_float(float val)
@@ -112,6 +129,27 @@ void Value::set_string(const char *s, int len /*= 0*/)
   length_ = str_value_.length();
 }
 
+// 该函数用于insert/update时读取到一个DATES类型数据将其转化为Value类型，
+// 输入：日期字符串，“1996-08-01”
+void Value::set_date(const char *s) {
+  attr_type_ = DATES;
+  int y,m,d;  
+  sscanf(s, "%d-%d-%d", &y, &m, &d);    //not check return value eq 3, lex guarantee
+  bool b = check_date(y,m,d);
+  // if(!b) return -1;
+  int dv = y*10000+m*100+d;
+  num_value_.date_value_ = dv;
+  length_ = sizeof(dv);
+}
+
+bool Value::check_date(int y, int m, int d)
+{
+  static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  bool       leap  = (y % 400 == 0 || (y % 100 && y % 4 == 0));
+  return y > 0 && (m > 0) && (m <= 12) && (d > 0) && (d <= ((m == 2 && leap) ? 1 : 0) + mon[m]);
+}
+
+// 将一个Value转化为另一个Value
 void Value::set_value(const Value &value)
 {
   switch (value.attr_type_) {
@@ -121,6 +159,9 @@ void Value::set_value(const Value &value)
     case FLOATS: {
       set_float(value.get_float());
     } break;
+    case DATES: {
+      set_date(value.get_int());    // 对于日期来说，本本身存储在内存中就是以int的形式
+    }
     case CHARS: {
       set_string(value.get_string().c_str());
     } break;
@@ -155,6 +196,9 @@ std::string Value::to_string() const
     case FLOATS: {
       os << common::double_to_str(num_value_.float_value_);
     } break;
+    case DATES: {
+      os << common::date_to_str(num_value_.date_value_);
+    }break;
     case BOOLEANS: {
       os << num_value_.bool_value_;
     } break;
@@ -172,6 +216,7 @@ int Value::compare(const Value &other) const
 {
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
+      case DATES:     
       case INTS: {
         return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other.num_value_.int_value_);
       } break;
@@ -215,6 +260,9 @@ int Value::get_int() const
     }
     case INTS: {
       return num_value_.int_value_;
+    }
+    case DATES: {
+      return num_value_.date_value_;
     }
     case FLOATS: {
       return (int)(num_value_.float_value_);

@@ -77,8 +77,9 @@ QUOTE            [\'\"]
 {WHITE_SAPCE}                                        // ignore whitespace
 \n                                                   ;
 
-[\-]?{DIGIT}+                           yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);
-[\-]?{DIGIT}+{DOT}{DIGIT}+              yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);
+[\-]?{DIGIT}+                                                         yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);            // 这里的三个数据类型对应的是Value.h中定义的数据类型
+[\-]?{DIGIT}+{DOT}{DIGIT}+                                            yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);    // 
+{QUOTE}[0-9]{4}\-(0?[1-9]|1[012])\-(0?[1-9]|[12][0-9]|3[01]){QUOTE}   yylval->string=strdup(yytext); RETURN_TOKEN(DATE);            // T1修改点
 
 ";"                                     RETURN_TOKEN(SEMICOLON);
 {DOT}                                   RETURN_TOKEN(DOT);
@@ -107,14 +108,17 @@ SET                                     RETURN_TOKEN(SET);
 BEGIN                                   RETURN_TOKEN(TRX_BEGIN);
 COMMIT                                  RETURN_TOKEN(TRX_COMMIT);
 ROLLBACK                                RETURN_TOKEN(TRX_ROLLBACK);
-INT                                     RETURN_TOKEN(INT_T);
+
+INT                                     RETURN_TOKEN(INT_T);    
+DATE                                    RETURN_TOKEN(DATE_T);    // T1修改点
 CHAR                                    RETURN_TOKEN(STRING_T);
 FLOAT                                   RETURN_TOKEN(FLOAT_T);
+
 LOAD                                    RETURN_TOKEN(LOAD);
 DATA                                    RETURN_TOKEN(DATA);
 INFILE                                  RETURN_TOKEN(INFILE);
 EXPLAIN                                 RETURN_TOKEN(EXPLAIN);
-{ID}                                    yylval->string=strdup(yytext); RETURN_TOKEN(ID);
+{ID}                                    yylval->string=strdup(yytext); RETURN_TOKEN(ID);    // ID就是一个名字
 "("                                     RETURN_TOKEN(LBRACE);
 ")"                                     RETURN_TOKEN(RBRACE);
 

@@ -22,6 +22,7 @@ string token_name(const char *sql_string, YYLTYPE *llocp)
 
 int yyerror(YYLTYPE *llocp, const char *sql_string, ParsedSqlResult *sql_result, yyscan_t scanner, const char *msg)
 {
+  // ParsedSqlNode在哪里定义的？——parse_defs.h
   std::unique_ptr<ParsedSqlNode> error_sql_node = std::make_unique<ParsedSqlNode>(SCF_ERROR);
   error_sql_node->error.error_msg = msg;
   error_sql_node->error.line = llocp->first_line;
@@ -54,6 +55,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %parse-param { void * scanner }
 
 //标识tokens
+// TODO:这里的token是什么含义？
 %token  SEMICOLON
         CREATE
         DROP
@@ -77,6 +79,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         INT_T
         STRING_T
         FLOAT_T
+        DATE_T    // T1修改点
         HELP
         EXIT
         DOT //QUOTE
@@ -99,6 +102,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         NE
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
+// 每次匹配到一个语法规则之后生成结果的类型
 %union {
   ParsedSqlNode *                   sql_node;
   ConditionSqlNode *                condition;
@@ -118,14 +122,16 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   float                             floats;
 }
 
-%token <number> NUMBER
+// TODO:这四个TOKEN的含义？
+%token <number> NUMBER  
 %token <floats> FLOAT
-%token <string> ID
+%token <string> ID      
+%token <string> DATE    // T1修改点
 %token <string> SSS
 //非终结符
 
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
-%type <number>              type
+%type <number>              type            // 返回类型(定义在上面的union中)————解析类型（下面定义）
 %type <condition>           condition
 %type <value>               value
 %type <number>              number
@@ -163,13 +169,14 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            exit_stmt
 %type <sql_node>            command_wrapper
 // commands should be a list but I use a single command instead
-%type <sql_node>            commands
+%type <sql_node>            commands      // 最终生成的结果
 
 %left '+' '-'
 %left '*' '/'
 %nonassoc UMINUS
 %%
 
+// 后面是具体的解析规则
 commands: command_wrapper opt_semicolon  //commands or sqls. parser starts here.
   {
     std::unique_ptr<ParsedSqlNode> sql_node = std::unique_ptr<ParsedSqlNode>($1);
@@ -336,8 +343,10 @@ attr_def:
 number:
     NUMBER {$$ = $1;}
     ;
+// TODO:关键点：这里进行类型映射
 type:
     INT_T      { $$=INTS; }
+    | DATE_T    {$$=DATES;}   // T1修改点
     | STRING_T { $$=CHARS; }
     | FLOAT_T  { $$=FLOATS; }
     ;
@@ -356,6 +365,7 @@ insert_stmt:        /*insert   语句的语法解析树*/
     }
     ;
 
+// TODO:找到了，value的值在这里修改
 value_list:
     /* empty */
     {
@@ -379,6 +389,11 @@ value:
     |FLOAT {
       $$ = new Value((float)$1);
       @$ = @1;
+    }
+    | DATE {    // T1修改点
+      char *tmp = common::substr($1,1,strlen($1)-2);
+      $$ = new Value(tmp, 0, true);    // 构建Date类型的Value
+      free(tmp);
     }
     |SSS {
       char *tmp = common::substr($1,1,strlen($1)-2);
@@ -427,7 +442,7 @@ select_stmt:        /*  select 语句的语法解析树*/
         delete $5;
       }
       $$->selection.relations.push_back($4);
-      std::reverse($$->selection.relations.begin(), $$->selection.relations.end());
+      std::reverse($$->selection.relations.begin(), $$->selection.relations.end());   // 为什么这里要反转？因为select_attr的写法是反着的。
 
       if ($6 != nullptr) {
         $$->selection.conditions.swap(*$6);

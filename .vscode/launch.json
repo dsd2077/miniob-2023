@@ -5,13 +5,13 @@
   "version": "0.2.0",
   "configurations": [
       {
-          "name": "(gdb) 启动",
+          "name": "miniob",
           "type": "cppdbg",
           "request": "launch",
           "program": "${workspaceFolder}/build/bin/observer",
-          "args": ["-f", "../../etc/observer.ini"],
+          "args": ["-f", "${workspaceFolder}/etc/observer.ini", "-P", "cli"],
           "stopAtEntry": false,
-          "cwd": "${fileDirname}",
+          "cwd": "${workspaceFolder}/",      // ${workspaceFolder}/build
           "environment": [],
           "externalConsole": false,
           "MIMode": "gdb",
@@ -27,7 +27,7 @@
                   "ignoreFailures": true
               }
           ],
-          "preLaunchTask": "CMake Build"
+          // "preLaunchTask": "Print workspaceFolder"
       }
   ]
 }

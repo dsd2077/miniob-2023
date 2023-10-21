@@ -21,7 +21,12 @@
               "cmake",
               "make"
           ]
-      }
+      },
+      {
+        "label": "shell",
+        "type": "shell",
+        "command":"echo '<test>' ${workspaceFolder}"
+    }
   ],
   "version": "2.0.0"
 }

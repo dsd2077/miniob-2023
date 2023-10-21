@@ -298,7 +298,7 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
     if (field->type() == CHARS) {
       const size_t data_len = value.length();
       if (copy_len > data_len) {
-        copy_len = data_len + 1;
+        copy_len = data_len + 1;        // 如果是字符串类型，压缩一点存储空间
       }
     }
     memcpy(record_data + field->offset(), value.data(), copy_len);

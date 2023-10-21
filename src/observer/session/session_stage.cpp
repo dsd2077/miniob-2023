@@ -101,11 +101,11 @@ void SessionStage::handle_request(StageEvent *event)
   Session::set_current_session(sev->session());
   sev->session()->set_current_request(sev);
   SQLStageEvent sql_event(sev, sql);
-  (void)handle_sql(&sql_event);
+  (void)handle_sql(&sql_event);       // 执行阶段之后，数据还没有落盘
 
   Communicator *communicator = sev->get_communicator();
   bool need_disconnect = false;
-  RC rc = communicator->write_result(sev, need_disconnect);
+  RC rc = communicator->write_result(sev, need_disconnect);     // 数据在这里执行的
   LOG_INFO("write result return %s", strrc(rc));
   if (need_disconnect) {
     Server::close_connection(communicator);
@@ -132,6 +132,8 @@ RC SessionStage::handle_sql(SQLStageEvent *sql_event)
     return rc;
   }
 
+  // parse_stage完成此法解析、语法解析
+  // 解析的结果应该是放在sql_event中
   rc = parse_stage_.handle_request(sql_event);
   if (OB_FAIL(rc)) {
     LOG_TRACE("failed to do parse. rc=%s", strrc(rc));
@@ -150,6 +152,8 @@ RC SessionStage::handle_sql(SQLStageEvent *sql_event)
     return rc;
   }
   
+  //执行阶段结束，数据还没有落盘
+  // 执行阶段在做什么？
   rc = execute_stage_.handle_request(sql_event);
   if (OB_FAIL(rc)) {
     LOG_TRACE("failed to do execute. rc=%s", strrc(rc));

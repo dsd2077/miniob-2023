@@ -284,4 +284,18 @@ std::string double_to_str(double v)
 
   return std::string(buf, len);
 }
+
+std::string date_to_str(int dv) {
+   // 提取年、月和日
+    int year = dv / 10000;
+    int month = (dv / 100) % 100;
+    int day = dv % 100;
+
+    // 使用sprintf格式化字符串
+    char temp[12]; // 考虑到最大日期格式为"YYYY-MM-DD"和字符串结束的'\0'，需要至少12个字符
+    sprintf(temp, "%d-%02d-%02d", year, month, day);
+
+    return temp;
+}
+
 }  // namespace common

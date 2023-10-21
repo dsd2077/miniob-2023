@@ -26,7 +26,7 @@ class FieldMeta;
 
 struct FilterObj 
 {
-  bool is_attr;
+  bool is_attr;     // 是否为一个属性
   Field field;
   Value value;
 

@@ -298,4 +298,14 @@ std::string date_to_str(int dv) {
     return temp;
 }
 
+bool is_valid_date(int dv)
+{
+  int        y     = dv / 10000;
+  int        m     = (dv / 100) % 100;
+  int        d     = dv % 100;
+  static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  bool       leap  = (y % 400 == 0 || (y % 100 && y % 4 == 0));
+  return y > 0 && (m > 0) && (m <= 12) && (d > 0) && (d <= ((m == 2 && leap) ? 1 : 0) + mon[m]);
+}
+
 }  // namespace common

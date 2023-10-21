@@ -28,6 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include <vector>
 
 #include "common/defs.h"
+#include "src/observer/common/rc.h"
 namespace common {
 
 /**
@@ -124,6 +125,7 @@ std::string double_to_str(double v);
  * @return
  */
 std::string date_to_str(int dv);
+bool        is_valid_date(int dv);
 
 bool is_blank(const char *s);
 

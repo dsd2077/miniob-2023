@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include <functional>
 #include <memory>
 
+#include "common/lang/string.h"
 #include "storage/record/record_manager.h"
 #include "storage/buffer/disk_buffer_pool.h"
 #include "storage/trx/latch_memo.h"
@@ -66,6 +67,7 @@ public:
   int operator()(const char *v1, const char *v2) const
   {
     switch (attr_type_) {
+      case DATES:
       case INTS: {
         return common::compare_int((void *)v1, (void *)v2);
       } break;
@@ -147,7 +149,10 @@ public:
       } break;
       case FLOATS: {
         return std::to_string(*(float *)v);
-      }
+      }break;
+      case DATES: {
+        return common::date_to_str(std::atoi(v));
+      }break;
       case CHARS: {
         std::string str;
         for (int i = 0; i < attr_length_; i++) {

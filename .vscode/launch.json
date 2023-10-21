@@ -11,7 +11,7 @@
           "program": "${workspaceFolder}/build/bin/observer",
           "args": ["-f", "${workspaceFolder}/etc/observer.ini", "-P", "cli"],
           "stopAtEntry": false,
-          "cwd": "${workspaceFolder}/",      // ${workspaceFolder}/build
+          "cwd": "${workspaceFolder}/build",      // ${workspaceFolder}/build
           "environment": [],
           "externalConsole": false,
           "MIMode": "gdb",

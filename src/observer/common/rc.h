@@ -68,6 +68,7 @@ See the Mulan PSL v2 for more details. */
   DEFINE_RC(FILE_NOT_OPENED)                \
   DEFINE_RC(FILE_CLOSE)                     \
   DEFINE_RC(FILE_REMOVE)                    \
+  DEFINE_RC(FILE_UNLINK)                    \
   DEFINE_RC(FILE_SEEK)                      \
   DEFINE_RC(FILE_READ)                      \
   DEFINE_RC(FILE_WRITE)                     \

@@ -37,7 +37,6 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
   }
 
   // check the fields number
-  // 目前只支持修改一个值,为了将来扩展，还是写成多值的通用形式 
   Value value = update.value;
   const TableMeta &table_meta = table->table_meta();
 
@@ -45,7 +44,7 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
   // 要根据属性的名字取获取对应的field_meta
   const FieldMeta *field_meta = table_meta.field(update.attribute_name.c_str());
   if (nullptr == field_meta) {
-    LOG_WARN("field =%s not exist in table=%s", field_meta->name(), table_name);
+    LOG_WARN("field =%s not exist in table=%s", update.attribute_name.c_str(), table_name);
     return RC::FILE_NOT_EXIST;
   }
   const AttrType field_type = field_meta->type();

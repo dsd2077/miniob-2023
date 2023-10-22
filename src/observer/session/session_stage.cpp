@@ -105,7 +105,7 @@ void SessionStage::handle_request(StageEvent *event)
 
   Communicator *communicator = sev->get_communicator();
   bool need_disconnect = false;
-  RC rc = communicator->write_result(sev, need_disconnect);     // 数据在这里执行的
+  RC rc = communicator->write_result(sev, need_disconnect);     // 真正的操作在这里执行的
   LOG_INFO("write result return %s", strrc(rc));
   if (need_disconnect) {
     Server::close_connection(communicator);

@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include <unistd.h>
 
 #include "common/defs.h"
+#include "storage/field/field_meta.h"
 #include "storage/table/table.h"
 #include "storage/table/table_meta.h"
 #include "common/log/log.h"
@@ -326,8 +327,8 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   }
 
   // 复制所有字段的值
-  int record_size = table_meta_.record_size();
-  char *record_data = (char *)malloc(record_size);
+  int record_size = table_meta_.record_size();      
+  char *record_data = (char *)malloc(record_size);      // 一个Record的大小是固定的,应该是创建表的时候确定的
 
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
@@ -486,6 +487,16 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
+RC Table::update_record(const Record &record, Value &value, std::string &attribute_name) {
+  // 先从索引中删除当前值
+  RC rc = RC::SUCCESS;
+  delete_entry_of_indexes(record.data(), record.rid(), true);
+  const FieldMeta *field_meta = table_meta_.field(attribute_name.c_str());
+  rc = record_handler_->update_record(&record.rid(), field_meta, value);
+  // 再插入更新后的值
+  return rc;
+}
+
 RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;
@@ -497,6 +508,7 @@ RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
   }
   return rc;
 }
+
 
 RC Table::delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists)
 {

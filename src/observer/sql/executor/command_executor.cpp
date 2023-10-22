@@ -32,6 +32,9 @@ RC CommandExecutor::execute(SQLStageEvent *sql_event)
   Stmt *stmt = sql_event->stmt();
 
   switch (stmt->type()) {
+    case StmtType::UPDATE: {
+
+    }
     case StmtType::CREATE_INDEX: {
       CreateIndexExecutor executor;
       return executor.execute(sql_event);

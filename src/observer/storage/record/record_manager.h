@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include <sstream>
 #include <limits>
 #include "storage/buffer/disk_buffer_pool.h"
+#include "storage/field/field_meta.h"
 #include "storage/trx/latch_memo.h"
 #include "storage/record/record.h"
 #include "common/lang/bitmap.h"
@@ -182,6 +183,13 @@ public:
   RC delete_record(const RID *rid);
 
   /**
+   * @brief 更新指定的记录
+   *
+   * @param rid 要更新的记录标识
+   */
+  RC update_record(const RID *rid, const FieldMeta *field_meta, Value &value);
+
+  /**
    * @brief 获取指定位置的记录数据
    *
    * @param rid 指定的位置
@@ -265,6 +273,15 @@ public:
    * @param rid 待删除记录的标识符
    */
   RC delete_record(const RID *rid);
+
+  /**
+   * @brief 从指定文件中修改指定槽位的记录
+   * 
+   * @param rid 待修改记录的标识符
+   * @param field_meta 待修改字段的元数据
+   * @param field_meta 待修改值
+   */
+  RC update_record(const RID *rid, const FieldMeta* field_meta, Value &value);
 
   /**
    * @brief 插入一个新的记录到指定文件中，并返回该记录的标识符

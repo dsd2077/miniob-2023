@@ -25,14 +25,14 @@ RC DeletePhysicalOperator::open(Trx *trx)
     return RC::SUCCESS;
   }
 
-  std::unique_ptr<PhysicalOperator> &child = children_[0];
-  RC rc = child->open(trx);
+  std::unique_ptr<PhysicalOperator> &child = children_[0];    // 第一个算子是TableScanPhysicalOperator
+  RC rc = child->open(trx);         // 递归调用所有子事务的open函数
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to open child operator: %s", strrc(rc));
     return rc;
   }
 
-  trx_ = trx;
+  trx_ = trx;       // 这一步的目的：
 
   return RC::SUCCESS;
 }
@@ -44,17 +44,17 @@ RC DeletePhysicalOperator::next()
     return RC::RECORD_EOF;
   }
 
-  PhysicalOperator *child = children_[0].get();
-  while (RC::SUCCESS == (rc = child->next())) {
-    Tuple *tuple = child->current_tuple();
+  PhysicalOperator *child = children_[0].get();   
+  while (RC::SUCCESS == (rc = child->next())) {   // 火山模型递归调用下层算子
+    Tuple *tuple = child->current_tuple();        // 下层算子向上层算子提供一行数据
     if (nullptr == tuple) {
       LOG_WARN("failed to get current record: %s", strrc(rc));
       return rc;
     }
 
     RowTuple *row_tuple = static_cast<RowTuple *>(tuple);
-    Record &record = row_tuple->record();
-    rc = trx_->delete_record(table_, record);
+    Record &record = row_tuple->record();     // tuple-->TowTuple-->record
+    rc = trx_->delete_record(table_, record); // 最终调用table->delete_record
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to delete record: %s", strrc(rc));
       return rc;

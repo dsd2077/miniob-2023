@@ -181,7 +181,7 @@ private:
 };
 
 /**
- * @brief BufferPool的实现
+ * @brief BufferPool的实现,一个bufferpool对应一个文件
  * @ingroup BufferPool
  */
 class DiskBufferPool 

@@ -92,23 +92,27 @@ RC LogicalPlanGenerator::create_plan(
   for (Table *table : tables) {
     std::vector<Field> fields;
     for (const Field &field : all_fields) {
-      if (0 == strcmp(field.table_name(), table->name())) {
+      if (0 == strcmp(field.table_name(), table->name())) {   // 找出每张表中要查询的属性
         fields.push_back(field);
       }
     }
 
+    // cross join是返回所有字段，还是select的字段？如果只返回select字段，下面的filter要怎么进行过滤？——即过滤字段不在select字段中
+    // 应该是所有字段，fields传进去并没有使用
     unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, true/*readonly*/));
     if (table_oper == nullptr) {
-      table_oper = std::move(table_get_oper);
+      table_oper = std::move(table_get_oper);   
     } else {
       JoinLogicalOperator *join_oper = new JoinLogicalOperator;
-      join_oper->add_child(std::move(table_oper));
+      join_oper->add_child(std::move(table_oper));    
       join_oper->add_child(std::move(table_get_oper));
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
   }
 
-  unique_ptr<LogicalOperator> predicate_oper;
+  // TODO:如果存在inner_join_stmt构建inner_join_oper
+
+  unique_ptr<LogicalOperator> predicate_oper;     // 这里的predicate_oper是where子句中的过滤条件
   RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));

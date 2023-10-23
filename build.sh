@@ -31,8 +31,8 @@ function usage
   echo "# Init."
   echo "./build.sh init"
   echo ""
-  echo "# Build by debug mode and make with -j24."
-  echo "./build.sh debug --make -j24"
+  echo "# Build by debug mode and make with -j2."
+  echo "./build.sh debug --make -j2"
 }
 
 function parse_args

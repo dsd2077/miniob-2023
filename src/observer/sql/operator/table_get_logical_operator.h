@@ -43,7 +43,7 @@ public:
 
 private:
   Table *table_ = nullptr;
-  std::vector<Field> fields_;
+  std::vector<Field> fields_;     // fields_字段没有用上
   bool readonly_ = false;
 
   // 与当前表相关的过滤操作，可以尝试在遍历数据时执行

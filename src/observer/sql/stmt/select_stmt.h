@@ -61,5 +61,5 @@ public:
 private:
   std::vector<Field> query_fields_;
   std::vector<Table *> tables_;
-  FilterStmt *filter_stmt_ = nullptr;
+  FilterStmt *filter_stmt_ = nullptr;     // where子句中的过滤条件
 };

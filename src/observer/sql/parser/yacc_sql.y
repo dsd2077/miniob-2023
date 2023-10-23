@@ -100,6 +100,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        INNER
+        JOIN
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 // 每次匹配到一个语法规则之后生成结果的类型
@@ -120,6 +122,9 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   char *                            string;
   int                               number;
   float                             floats;
+  InnerJoinNode *                   join_clause;
+  std::vector<ConditionSqlNode> *   join_conditions;          
+  std::vector<InnerJoinNode> *      inner_join_list;
 }
 
 // TODO:这四个TOKEN的含义？
@@ -170,6 +175,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            command_wrapper
 // commands should be a list but I use a single command instead
 %type <sql_node>            commands      // 最终生成的结果
+//inner join related
+%type <inner_join_list>     inner_join_list;
+%type <join_clause>         join_clause
+%type <join_conditions>     join_conditions
+
 
 %left '+' '-'
 %left '*' '/'
@@ -430,7 +440,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where
+    SELECT select_attr FROM ID rel_list inner_join_list where
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -445,9 +455,16 @@ select_stmt:        /*  select 语句的语法解析树*/
       std::reverse($$->selection.relations.begin(), $$->selection.relations.end());   // 为什么这里要反转？因为select_attr的写法是反着的。
 
       if ($6 != nullptr) {
-        $$->selection.conditions.swap(*$6);
+        $$->selection.inner_join_clauses.swap(*$6);
         delete $6;
       }
+      std::reverse($$->selection.inner_join_clauses.begin(), $$->selection.inner_join_clauses.end());   
+
+      if ($7 != nullptr) {
+        $$->selection.conditions.swap(*$7);
+        delete $7;
+      }
+
       free($4);
     }
     ;
@@ -571,6 +588,48 @@ rel_list:
       free($2);
     }
     ;
+
+inner_join_list:
+    /* empty */
+    {
+        $$ = nullptr;
+    }
+    | join_clause inner_join_list {
+        if($2 != nullptr) {
+            $$ = $2;
+        } else {
+            $$ = new std::vector<InnerJoinNode>;
+        }
+        $$->push_back(*$1);
+    }
+    ;
+
+join_clause:
+    INNER JOIN ID join_conditions {
+        $$ = new InnerJoinNode;
+        $$->relation_name = $3;
+        $$->conditions.swap(*$4);
+        delete $4;
+    }
+    ;
+
+join_conditions:
+    // inner join可以没有on子句
+    {
+        $$ = nullptr;
+    }
+    | ON condition {    // 如果有on关键字，则至少必须有一个condition
+      $$ = new std::vector<ConditionSqlNode>;
+      $$->emplace_back(*$2);
+      delete $2;
+    }
+    | ON condition AND condition_list {     
+      $$ = $4;
+      $$->emplace_back(*$2);
+      delete $2;
+    }
+    ;
+
 where:
     /* empty */
     {
@@ -590,7 +649,7 @@ condition_list:
       $$->emplace_back(*$1);
       delete $1;
     }
-    | condition AND condition_list {
+    | condition AND condition_list {        // 最长匹配原则
       $$ = $3;
       $$->emplace_back(*$1);
       delete $1;

@@ -47,8 +47,17 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   std::vector<Table *> tables;
   std::unordered_map<std::string, Table *> table_map;
 
-  for (size_t i = 0; i < select_sql.relations.size(); i++) {
-    const char *table_name = select_sql.relations[i].c_str();
+  std::vector<std::string>relations(select_sql.relations);
+  // 存在inner join,需要将inner join表拿出来
+  if (!select_sql.inner_join_clauses.empty()) {
+    for (auto &inner_join_node : select_sql.inner_join_clauses) {
+      relations.emplace_back(inner_join_node.relation_name);
+    }
+  }
+
+
+  for (size_t i = 0; i < relations.size(); i++) {
+    const char *table_name = relations[i].c_str();
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;
@@ -133,11 +142,18 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
+  std::vector<ConditionSqlNode> conditions(select_sql.conditions);
+  if (!select_sql.inner_join_clauses.empty()) {
+    for (auto &inner_join_node : select_sql.inner_join_clauses) {
+      conditions.insert(conditions.end(), inner_join_node.conditions.begin(), inner_join_node.conditions.end());
+    }
+  }
+
   RC rc = FilterStmt::create(db,
       default_table,
       &table_map,
-      select_sql.conditions.data(),
-      static_cast<int>(select_sql.conditions.size()),
+      conditions.data(),
+      static_cast<int>(conditions.size()),
       filter_stmt);
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");

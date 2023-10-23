@@ -99,6 +99,8 @@ char *hex_to_bin(const char *s, char *bin_buff, int *dest_len);
 template <class T>
 bool str_to_val(const std::string &str, T &val, std::ios_base &(*radix)(std::ios_base &) = std::dec);
 
+double stringToNumber(const std::string& str);
+
 /**
  * Convert a numeric value into its string representation
  * @param[in]   val     numeric value
@@ -118,6 +120,8 @@ void val_to_str(const T &val, std::string &str, std::ios_base &(*radix)(std::ios
  * @return
  */
 std::string double_to_str(double v);
+
+
 
 /**
  * date to string eg: 19960801-->"1996-8-1"
@@ -157,6 +161,8 @@ bool str_to_val(const std::string &str, T &val, std::ios_base &(*radix)(std::ios
   }
   return success;
 }
+
+double stringToNumber(const std::string& str);
 
 template <class T>
 void val_to_str(const T &val, std::string &str, std::ios_base &(*radix)(std::ios_base &)/* = std::dec */)

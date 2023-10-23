@@ -186,7 +186,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   const TupleSchema &schema = sql_result->tuple_schema();
   const int cell_num = schema.cell_num();
 
-  // 打印表头信息,不锁所有的语句都需要答应表头信息
+  // 打印表头信息,不是所有的语句都需要答应表头信息
   for (int i = 0; i < cell_num; i++) {
     const TupleCellSpec &spec = schema.cell_at(i);
     const char *alias = spec.alias();

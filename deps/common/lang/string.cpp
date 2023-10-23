@@ -308,4 +308,36 @@ bool is_valid_date(int dv)
   return y > 0 && (m > 0) && (m <= 12) && (d > 0) && (d <= ((m == 2 && leap) ? 1 : 0) + mon[m]);
 }
 
+double stringToNumber(const std::string &str)
+{
+  std::size_t i            = 0;
+  double      result       = 0;
+  bool        decimalFound = false;
+  double      decimalPlace = 10;
+
+  // 跳过前导空白字符
+  while (i < str.length() && isspace(str[i])) {
+    i++;
+  }
+
+  // 转换数字部分
+  while (i < str.length()) {
+    if (isdigit(str[i])) {
+      if (!decimalFound) {
+        result = result * 10 + (str[i] - '0');
+      } else {
+        result += (str[i] - '0') / decimalPlace;
+        decimalPlace *= 10;
+      }
+    } else if (str[i] == '.' && !decimalFound) {
+      decimalFound = true;
+    } else {
+      break;
+    }
+    i++;
+  }
+
+  return result;
+}
+
 }  // namespace common

@@ -242,6 +242,12 @@ int Value::compare(const Value &other) const
   } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
     float other_data = other.num_value_.int_value_;
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
+  } else if (this->attr_type_ == CHARS) {
+    float str_float = common::stringToNumber(str_value_);
+    return common::compare_float((void *)&str_float, (void *)other.data());
+  } else if (other.attr_type_ == CHARS) {
+    float str_float = common::stringToNumber(other.str_value_);
+    return common::compare_float((void *)data(), (void *)&str_float);
   }
   LOG_WARN("not supported");
   return -1;  // TODO return rc?

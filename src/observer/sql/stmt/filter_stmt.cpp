@@ -110,7 +110,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     FilterObj filter_obj;
     filter_obj.init_value(condition.left_value);
     filter_unit->set_left(filter_obj);
-}
+  }
 
   // xxx == birthday  右边为一个属性
   if (condition.right_is_attr) {

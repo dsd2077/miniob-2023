@@ -120,7 +120,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
         if(right_str[i] == '%') {
           re += ".*";
         }else if(right_str[i] == '_') {
-          re += "_";
+          re += ".";
         }else {
           re += right_str[i];
         }

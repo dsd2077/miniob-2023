@@ -115,16 +115,17 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
       // LIKE: 不使用Value::compare的通用方法
       std::string right_str = right.get_string();
       std::string left_str = left.get_string();
-      std::string re = "";
+      std::string re = "^";
       for(int i = 0 ; i < right_str.size() ; i ++ ) {
         if(right_str[i] == '%') {
-          re += "[A-Za-z0-9]*";
+          re += ".*";
         }else if(right_str[i] == '_') {
           re += "_";
         }else {
           re += right_str[i];
         }
       }
+      re += "$";
 
       std::regex like_regex(re);  // like的正则表达式
       std::smatch matcher;

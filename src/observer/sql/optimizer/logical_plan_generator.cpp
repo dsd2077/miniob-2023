@@ -112,6 +112,8 @@ RC LogicalPlanGenerator::create_plan(
     if (agg_type != AggregationType::NONE) {
       is_aggregation = true;
       break;
+    } else if (is_aggregation) {
+      return RC::UNIMPLENMENT;
     }
   }
 

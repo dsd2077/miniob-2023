@@ -67,14 +67,27 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   // collect query fields in `select` statement
   std::vector<Field> query_fields;
   std::vector<AggregationType> agg_types;
-  bool is_aggreagtion = false;
+  // bool is_aggreagtion = false;
+  int is_valid_select = 0; // check mix project aggregation and none group by field");
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
     const RelAttrSqlNode &relation_attr = select_sql.attributes[i].agg_expr;
     const AggregationType &agg_type = select_sql.attributes[i].agg_type;
     agg_types.push_back(agg_type);
 
     if (agg_type != AggregationType::NONE) {
-      is_aggreagtion = true;
+      if (is_valid_select == 0) {
+        is_valid_select = 1;
+      } else if (is_valid_select == 2) {
+        LOG_WARN("mix project aggregation and none group by field");
+        return RC::SQL_SYNTAX;
+      }
+    } else { // [TODO]: check group by field
+      if (is_valid_select == 0) {
+        is_valid_select = 2;
+      } else if (is_valid_select == 1) {
+        LOG_WARN("mix project aggregation and none group by field");
+        return RC::SQL_SYNTAX;
+      }
     }
 
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
@@ -158,7 +171,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->agg_types_.swap(agg_types);
-  select_stmt->is_aggreagtion_ = is_aggreagtion;
+  select_stmt->is_aggreagtion_ = (is_valid_select == 2);
   // select_stmt->select_list_.swap(select_list);
   select_stmt->filter_stmt_ = filter_stmt;
   stmt = select_stmt;

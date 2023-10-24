@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include <memory>
 
 #include "common/rc.h"
+#include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
 #include "storage/field/field.h"
 
@@ -57,9 +58,18 @@ public:
   {
     return filter_stmt_;
   }
+  std::vector<AggregationType>& agg_types() {
+    return agg_types_;
+  };
+  bool is_aggreagtion() const {
+    return is_aggreagtion_;
+  };
 
 private:
   std::vector<Field> query_fields_;
+  std::vector<AggregationType> agg_types_;
+  bool is_aggreagtion_ = false;
+  std::vector<Expression> select_list_;
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;
 };

@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "sql/expr/tuple_cell.h"
 #include "sql/parser/parse.h"
+#include "sql/parser/parse_defs.h"
 #include "sql/parser/value.h"
 #include "sql/expr/expression.h"
 #include "storage/record/record.h"
@@ -290,6 +291,11 @@ private:
   Tuple *tuple_ = nullptr;
 };
 
+class AggTuple : public Tuple
+{
+
+};
+
 class ExpressionTuple : public Tuple 
 {
 public:
@@ -306,6 +312,14 @@ public:
   {
     return expressions_.size();
   }
+
+  void expession_at(int index, Expression*& exp) {
+    exp = expressions_[index].get();
+  }
+
+  // void add_expression(std::unique_ptr<Expression> expr) {
+  //   expressions_.push_back(std::move(expr));
+  // }
 
   RC cell_at(int index, Value &cell) const override
   {

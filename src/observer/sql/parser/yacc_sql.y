@@ -100,6 +100,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        COUN_
+        MAX
+        MIN
+        SUM
+        AVG
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 // 每次匹配到一个语法规则之后生成结果的类型
@@ -109,6 +114,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Value *                           value;
   enum CompOp                       comp;
   RelAttrSqlNode *                  rel_attr;
+  AggregationSqlNode *              agg_attr;
   std::vector<AttrInfoSqlNode> *    attr_infos;
   AttrInfoSqlNode *                 attr_info;
   Expression *                      expression;
@@ -116,6 +122,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   std::vector<Value> *              value_list;
   std::vector<ConditionSqlNode> *   condition_list;
   std::vector<RelAttrSqlNode> *     rel_attr_list;
+  std::vector<AggregationSqlNode> * agg_attr_list;
+  AggregationType                   agg_type;
   std::vector<std::string> *        relation_list;
   char *                            string;
   int                               number;
@@ -137,14 +145,17 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <number>              number
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
+%type <agg_attr>            agg_attr
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
 %type <condition_list>      where
 %type <condition_list>      condition_list
-%type <rel_attr_list>       select_attr
+%type <agg_attr_list>       select_attr
+%type <agg_type>            agg_type
 %type <relation_list>       rel_list
-%type <rel_attr_list>       attr_list
+// %type <rel_attr_list>       attr_list
+%type <agg_attr_list>      agg_attr_list
 %type <expression>          expression
 %type <expression_list>     expression_list
 %type <sql_node>            calc_stmt
@@ -506,20 +517,94 @@ expression:
 
 select_attr:
     '*' {
-      $$ = new std::vector<RelAttrSqlNode>;
+      $$ = new std::vector<AggregationSqlNode>;
+      AggregationSqlNode agg_attr;
       RelAttrSqlNode attr;
       attr.relation_name  = "";
       attr.attribute_name = "*";
-      $$->emplace_back(attr);
+      agg_attr.agg_type = AggregationType::NONE;
+      agg_attr.agg_expr = attr;
+      $$->emplace_back(agg_attr);
     }
-    | rel_attr attr_list {
+    | agg_attr agg_attr_list {
       if ($2 != nullptr) {
         $$ = $2;
       } else {
-        $$ = new std::vector<RelAttrSqlNode>;
+        $$ = new std::vector<AggregationSqlNode>;
       }
       $$->emplace_back(*$1);
       delete $1;
+    }
+    // | rel_attr attr_list {
+    //   if ($2 != nullptr) {
+    //     $$ = $2;
+    //   } else {
+    //     $$ = new std::vector<RelAttrSqlNode>;
+    //   }
+    //   $$->emplace_back(*$1);
+    //   delete $1;
+    // }
+    ;
+
+agg_attr:
+    rel_attr {
+      $$ = new AggregationSqlNode(AggregationType::NONE, *$1);
+      delete $1;
+    }
+    | agg_type LBRACE '*' RBRACE { // [bugfix]
+      $$ = new AggregationSqlNode;
+      $$->agg_type = AggregationType::COUN_STAR;
+      $$->agg_expr = RelAttrSqlNode("", "*");
+      /* [TODO] free($1); */
+    }
+    | agg_type LBRACE '*' DOT '*' RBRACE { // [bugfix]
+      $$ = new AggregationSqlNode;
+      $$->agg_type = AggregationType::COUN_STAR;
+      $$->agg_expr = RelAttrSqlNode("", "*");
+      /* [TODO] free($1); */
+    }
+    | agg_type LBRACE ID RBRACE {
+      $$ = new AggregationSqlNode;
+      $$->agg_type = $1;
+      RelAttrSqlNode attr;
+      attr.relation_name  = "";
+      attr.attribute_name = $3;
+      $$->agg_expr = attr;
+      free($3);
+    }
+    | agg_type LBRACE ID DOT ID RBRACE {
+      $$ = new AggregationSqlNode;
+      $$->agg_type = $1;
+      RelAttrSqlNode attr;
+      attr.relation_name  = $3;
+      attr.attribute_name = $5;
+      $$->agg_expr = attr;
+      free($3);
+    }
+    ;
+  
+agg_type:
+    COUN_ { $$ = AggregationType::COUN_; }
+    | MAX { $$ = AggregationType::MAX; }
+    | MIN { $$ = AggregationType::MIN; }
+    | SUM { $$ = AggregationType::SUM; }
+    | AVG { $$ = AggregationType::AVG; }
+    ;
+
+agg_attr_list:
+    /* empty */
+    {
+      $$ = nullptr;
+    }
+    | COMMA agg_attr agg_attr_list {
+      if ($3 != nullptr) {
+        $$ = $3;
+      } else {
+        $$ = new std::vector<AggregationSqlNode>;
+      }
+
+      $$->emplace_back(*$2);
+      delete $2;
     }
     ;
 
@@ -538,22 +623,22 @@ rel_attr:
     }
     ;
 
-attr_list:
-    /* empty */
-    {
-      $$ = nullptr;
-    }
-    | COMMA rel_attr attr_list {
-      if ($3 != nullptr) {
-        $$ = $3;
-      } else {
-        $$ = new std::vector<RelAttrSqlNode>;
-      }
+// attr_list:
+//     /* empty */
+//     {
+//       $$ = nullptr;
+//     }
+//     | COMMA rel_attr attr_list {
+//       if ($3 != nullptr) {
+//         $$ = $3;
+//       } else {
+//         $$ = new std::vector<RelAttrSqlNode>;
+//       }
 
-      $$->emplace_back(*$2);
-      delete $2;
-    }
-    ;
+//       $$->emplace_back(*$2);
+//       delete $2;
+//     }
+//     ;
 
 rel_list:
     /* empty */

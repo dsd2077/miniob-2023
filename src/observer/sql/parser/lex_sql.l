@@ -59,6 +59,7 @@ extern double atof();
 %option case-insensitive
 %option bison-locations
 
+COUN_            COUNT
 WHITE_SAPCE      [\ \t\b\f]
 DIGIT            [0-9]+
 
@@ -95,6 +96,11 @@ ON                                      RETURN_TOKEN(ON);
 SHOW                                    RETURN_TOKEN(SHOW);
 SYNC                                    RETURN_TOKEN(SYNC);
 SELECT                                  RETURN_TOKEN(SELECT);
+{COUN_}                                 RETURN_TOKEN(COUN_);
+MAX                                     RETURN_TOKEN(MAX);
+MIN                                     RETURN_TOKEN(MIN);
+SUM                                     RETURN_TOKEN(SUM);
+AVG                                     RETURN_TOKEN(AVG);
 CALC                                    RETURN_TOKEN(CALC);
 FROM                                    RETURN_TOKEN(FROM);
 WHERE                                   RETURN_TOKEN(WHERE);

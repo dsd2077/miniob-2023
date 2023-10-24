@@ -12,6 +12,7 @@ See the Mulan PSL v2 for more details. */
 // Created by Wangyunlai on 2022/12/14.
 //
 
+#include <memory>
 #include <utility>
 
 #include "sql/optimizer/physical_plan_generator.h"
@@ -22,6 +23,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/predicate_physical_operator.h"
 #include "sql/operator/project_logical_operator.h"
 #include "sql/operator/project_physical_operator.h"
+#include "sql/operator/aggregation_logical_operator.h"
+#include "sql/operator/aggregation_physical_operator.h"
 #include "sql/operator/insert_logical_operator.h"
 #include "sql/operator/insert_physical_operator.h"
 #include "sql/operator/delete_logical_operator.h"
@@ -34,6 +37,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/calc_physical_operator.h"
 #include "sql/expr/expression.h"
 #include "common/log/log.h"
+#include "sql/parser/parse_defs.h"
 
 using namespace std;
 
@@ -56,6 +60,10 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
 
     case LogicalOperatorType::PROJECTION: {
       return create_plan(static_cast<ProjectLogicalOperator &>(logical_operator), oper);
+    } break;
+
+    case LogicalOperatorType::AGGREGATION: {
+      return create_plan(static_cast<AggregationLogicalOperator &>(logical_operator), oper);
     } break;
 
     case LogicalOperatorType::INSERT: {
@@ -201,6 +209,65 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
   oper = unique_ptr<PhysicalOperator>(project_operator);
 
   LOG_TRACE("create a project physical operator");
+  return rc;
+}
+
+RC PhysicalPlanGenerator::create_plan(AggregationLogicalOperator &agg_oper, unique_ptr<PhysicalOperator> &oper)
+{
+  vector<unique_ptr<LogicalOperator>> &child_opers = agg_oper.children();
+
+  unique_ptr<PhysicalOperator> child_phy_oper;
+
+  RC rc = RC::SUCCESS;
+  if (!child_opers.empty()) {
+    LogicalOperator *child_oper = child_opers.front().get();
+    rc = create(*child_oper, child_phy_oper);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to create project logical operator's child physical operator. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+  std::vector<std::unique_ptr<Expression>> exprs;
+  for (auto &agg_type : agg_oper.agg_types()) {
+    switch (agg_type) {
+      case AggregationType::COUN_: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      case AggregationType::COUN_STAR: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      case AggregationType::SUM: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      case AggregationType::AVG: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      case AggregationType::MAX: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      case AggregationType::MIN: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      case AggregationType::NONE: {
+        exprs.emplace_back(new ValueExpr(Value(0)));
+      } break;
+      default: {
+        LOG_DEBUG("unknown aggregation type");
+      } break;
+    }
+  }
+  AggregationPhysicalOperator *agg_operator = new AggregationPhysicalOperator(exprs);
+  agg_operator->agg_types() = agg_oper.agg_types();
+
+  agg_operator->agg_expressions() = std::move(agg_oper.expressions()); // [TODO]
+
+  if (child_phy_oper) {
+    agg_operator->add_child(std::move(child_phy_oper));
+  }
+
+  oper = unique_ptr<PhysicalOperator>(agg_operator);
+
+  LOG_TRACE("create a aggregation physical operator");
   return rc;
 }
 

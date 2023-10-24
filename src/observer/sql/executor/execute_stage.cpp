@@ -67,13 +67,19 @@ RC ExecuteStage::handle_request_with_physical_operator(SQLStageEvent *sql_event)
   switch (stmt->type()) {
     case StmtType::SELECT: {
       SelectStmt *select_stmt = static_cast<SelectStmt *>(stmt);
-      bool with_table_name = select_stmt->tables().size() > 1;
+      if (select_stmt->is_aggreagtion()) {
+        for (int i = 0; i  < select_stmt->agg_types().size(); ++i) {
+          schema.append_cell("<unnamed>");
+        }
+      } else {
+        bool with_table_name = select_stmt->tables().size() > 1;
 
-      for (const Field &field : select_stmt->query_fields()) {
-        if (with_table_name) {
-          schema.append_cell(field.table_name(), field.field_name());
-        } else {
-          schema.append_cell(field.field_name());
+        for (const Field &field : select_stmt->query_fields()) {
+          if (with_table_name) {
+            schema.append_cell(field.table_name(), field.field_name());
+          } else {
+            schema.append_cell(field.field_name());
+          }
         }
       }
     } break;

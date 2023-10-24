@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/stmt/select_stmt.h"
+#include "sql/parser/parse_defs.h"
 #include "sql/stmt/filter_stmt.h"
 #include "common/log/log.h"
 #include "common/lang/string.h"
@@ -65,8 +66,16 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
   // collect query fields in `select` statement
   std::vector<Field> query_fields;
+  std::vector<AggregationType> agg_types;
+  bool is_aggreagtion = false;
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
-    const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
+    const RelAttrSqlNode &relation_attr = select_sql.attributes[i].agg_expr;
+    const AggregationType &agg_type = select_sql.attributes[i].agg_type;
+    agg_types.push_back(agg_type);
+
+    if (agg_type != AggregationType::NONE) {
+      is_aggreagtion = true;
+    }
 
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
         0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
@@ -148,6 +157,9 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   // TODO add expression copy
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
+  select_stmt->agg_types_.swap(agg_types);
+  select_stmt->is_aggreagtion_ = is_aggreagtion;
+  // select_stmt->select_list_.swap(select_list);
   select_stmt->filter_stmt_ = filter_stmt;
   stmt = select_stmt;
   return RC::SUCCESS;

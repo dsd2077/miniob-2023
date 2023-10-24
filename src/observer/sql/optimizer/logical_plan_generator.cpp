@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/logical_operator.h"
 #include "sql/operator/calc_logical_operator.h"
 #include "sql/operator/project_logical_operator.h"
+#include "sql/operator/aggregation_logical_operator.h"
 #include "sql/operator/predicate_logical_operator.h"
 #include "sql/operator/table_get_logical_operator.h"
 #include "sql/operator/insert_logical_operator.h"
@@ -25,6 +26,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/project_logical_operator.h"
 #include "sql/operator/explain_logical_operator.h"
 
+#include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/calc_stmt.h"
 #include "sql/stmt/select_stmt.h"
@@ -32,6 +34,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/insert_stmt.h"
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/explain_stmt.h"
+#include <compare>
+#include <memory>
 
 using namespace std;
 
@@ -102,6 +106,15 @@ RC LogicalPlanGenerator::create_plan(
     }
   }
 
+  bool is_aggregation = false;
+  const std::vector<AggregationType> &agg_types = select_stmt->agg_types();
+  for (auto& agg_type: agg_types) {
+    if (agg_type != AggregationType::NONE) {
+      is_aggregation = true;
+      break;
+    }
+  }
+
   unique_ptr<LogicalOperator> predicate_oper;
   RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
   if (rc != RC::SUCCESS) {
@@ -109,19 +122,40 @@ RC LogicalPlanGenerator::create_plan(
     return rc;
   }
 
-  unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
-  if (predicate_oper) {
-    if (table_oper) {
-      predicate_oper->add_child(std::move(table_oper));
+
+  if (is_aggregation) {
+    std::vector<unique_ptr<Expression>> exprs;
+    for (const Field &field : all_fields) {
+      exprs.emplace_back(new FieldExpr(field));
     }
-    project_oper->add_child(std::move(predicate_oper));
+    unique_ptr<LogicalOperator> agg_oper(new AggregationLogicalOperator(std::move(exprs), agg_types));
+    if (predicate_oper) {
+      if (table_oper) {
+        predicate_oper->add_child(std::move(table_oper));
+      }
+      agg_oper->add_child(std::move(predicate_oper));
+    } else {
+      if (table_oper) {
+        agg_oper->add_child(std::move(table_oper));
+      }
+    }
+    logical_operator.swap(agg_oper);
+    //[TODO]
   } else {
-    if (table_oper) {
-      project_oper->add_child(std::move(table_oper));
+    unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
+    if (predicate_oper) {
+      if (table_oper) {
+        predicate_oper->add_child(std::move(table_oper));
+      }
+      project_oper->add_child(std::move(predicate_oper));
+    } else {
+      if (table_oper) {
+        project_oper->add_child(std::move(table_oper));
+      }
     }
+    logical_operator.swap(project_oper);
   }
 
-  logical_operator.swap(project_oper);
   return RC::SUCCESS;
 }
 

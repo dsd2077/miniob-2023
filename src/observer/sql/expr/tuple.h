@@ -86,6 +86,8 @@ public:
   Tuple() = default;
   virtual ~Tuple() = default;
 
+  virtual Tuple* clone() const = 0;
+
   /**
    * @brief 获取元组中的Cell的个数
    * @details 个数应该与tuple_schema一致
@@ -139,10 +141,32 @@ public:
   RowTuple() = default;
   virtual ~RowTuple()
   {
-    for (FieldExpr *spec : speces_) {
-      delete spec;
+    // for (FieldExpr *spec : speces_) {
+    // }
+    // speces_.clear();
+  }
+
+  RowTuple(const RowTuple &other)
+  {
+    // 对于record_, 这里假设Record有一个拷贝构造函数
+    if (other.record_)
+      record_ = new Record(*(other.record_));
+
+    // 只拷贝指针
+    table_ = other.table_;
+
+    // 对于speces_, 进行深拷贝
+    for (auto fieldExpr : other.speces_) {
+      if (fieldExpr) {
+        speces_.push_back(new FieldExpr(*fieldExpr));
+      } else {
+        speces_.push_back(nullptr);
+      }
     }
-    speces_.clear();
+  }
+
+  Tuple* clone() const override {
+    return new RowTuple(*this);
   }
 
   void set_record(Record *record)
@@ -218,6 +242,7 @@ public:
     return *record_;
   }
 
+
 private:
   Record *record_ = nullptr;
   const Table *table_ = nullptr;
@@ -241,6 +266,10 @@ public:
       delete spec;
     }
     speces_.clear();
+  }
+
+  Tuple* clone() const override {
+    return new ProjectTuple(*this);
   }
 
   void set_tuple(Tuple *tuple)
@@ -302,6 +331,10 @@ public:
   {
   }
 
+  Tuple* clone() const override {
+    return new ExpressionTuple(*this);
+  }
+
   int cell_num() const override
   {
     return expressions_.size();
@@ -342,6 +375,9 @@ public:
   ValueListTuple() = default;
   virtual ~ValueListTuple() = default;
 
+  Tuple* clone() const override {
+    return new ValueListTuple(*this);
+  }
   void set_cells(const std::vector<Value> &cells)
   {
     cells_ = cells;
@@ -381,6 +417,10 @@ class JoinedTuple : public Tuple
 public:
   JoinedTuple() = default;
   virtual ~JoinedTuple() = default;
+
+  Tuple* clone() const override {
+    return new JoinedTuple(*this);
+  }
 
   void set_left(Tuple *left)
   {

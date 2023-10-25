@@ -65,6 +65,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         CALC
         SELECT
         DESC
+        ASC
         SHOW
         SYNC
         INSERT
@@ -102,6 +103,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         NE
         INNER
         JOIN
+        ORDER
+        BY 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 // 每次匹配到一个语法规则之后生成结果的类型
@@ -125,6 +128,9 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   InnerJoinNode *                   join_clause;
   std::vector<ConditionSqlNode> *   join_conditions;          
   std::vector<InnerJoinNode> *      inner_join_list;
+  enum OrderDirection               order_direction;
+  OrderByNode *                     order_by_item;
+  std::vector<OrderByNode> *        order_by_list;
 }
 
 // TODO:这四个TOKEN的含义？
@@ -179,6 +185,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <inner_join_list>     inner_join_list;
 %type <join_clause>         join_clause
 %type <join_conditions>     join_conditions
+%type <order_by_list>       order_by
+%type <order_by_list>       order_by_list
+%type <order_by_item>       order_by_item
+%type <order_direction>     order_direction
+
 
 
 %left '+' '-'
@@ -440,7 +451,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list inner_join_list where
+    SELECT select_attr FROM ID rel_list inner_join_list where order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -453,6 +464,7 @@ select_stmt:        /*  select 语句的语法解析树*/
       }
       $$->selection.relations.push_back($4);
       std::reverse($$->selection.relations.begin(), $$->selection.relations.end());   // 为什么这里要反转？因为select_attr的写法是反着的。
+      free($4);
 
       if ($6 != nullptr) {
         $$->selection.inner_join_clauses.swap(*$6);
@@ -465,7 +477,12 @@ select_stmt:        /*  select 语句的语法解析树*/
         delete $7;
       }
 
-      free($4);
+      if ($8 != nullptr) {
+        $$->selection.order_by_nodes.swap(*$8);
+        delete $8;
+      }
+      std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
+
     }
     ;
 calc_stmt:
@@ -589,6 +606,11 @@ rel_list:
     }
     ;
 
+/**
+ *dengshudong添加的语法规则
+*/
+
+// inner join语法规则
 inner_join_list:
     /* empty */
     {
@@ -629,6 +651,59 @@ join_conditions:
       delete $2;
     }
     ;
+
+// order by语法规则
+order_direction:
+    DESC {
+        $$ = OrderDirection::DESC;
+    }
+    | ASC {
+        $$ = OrderDirection::ASC;
+    }
+    | /* empty, default to ascending */
+    {
+        $$ = OrderDirection::ASC;
+    }
+    ;
+
+order_by_item:
+    rel_attr order_direction {
+        $$ = new OrderByNode;
+        $$->attribute = *$1;
+        $$->direction = $2;
+        delete $1;
+    }
+    ;
+
+order_by_list:
+    // 这里不能为空，为空就有问题
+    // {
+    // $$ = nullptr
+    // }
+    order_by_item {
+        $$ = new std::vector<OrderByNode>;
+        $$->push_back(*$1);
+    }
+    | order_by_item COMMA order_by_list {
+        $$ = $3;
+        $$->emplace_back(*$1);
+        delete $1;
+    }
+    ;
+
+order_by:
+    /* empty */ 
+    {
+        $$ = nullptr;
+    } 
+    | ORDER BY order_by_list {
+        $$ = $3;
+    }
+    ;
+
+/**
+ *dengshudong添加的语法规则end
+*/
 
 where:
     /* empty */

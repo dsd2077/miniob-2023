@@ -25,6 +25,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/join_logical_operator.h"
 #include "sql/operator/project_logical_operator.h"
 #include "sql/operator/explain_logical_operator.h"
+#include "sql/operator/order_by_logical_operator.h"
 
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/calc_stmt.h"
@@ -34,6 +35,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/explain_stmt.h"
 #include "sql/stmt/update_stmt.h"
+#include <memory>
 
 using namespace std;
 
@@ -119,22 +121,44 @@ RC LogicalPlanGenerator::create_plan(
     return rc;
   }
 
+  unique_ptr<LogicalOperator> order_by_oper;
+  if (!select_stmt->order_by_fields().empty()) {
+    order_by_oper = std::make_unique<OrderByLogicalOperator>(select_stmt->order_by_fields());
+  }
+
+
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
-  if (predicate_oper) {
-    if (table_oper) {
-      predicate_oper->add_child(std::move(table_oper));
-    }
-    project_oper->add_child(std::move(predicate_oper));
-  } else {
-    if (table_oper) {
-      project_oper->add_child(std::move(table_oper));
+  std::vector<unique_ptr<LogicalOperator>> stack;
+  stack.push_back(std::move(table_oper));
+  stack.push_back(std::move(predicate_oper));
+  stack.push_back(std::move(order_by_oper));
+  stack.push_back(std::move(project_oper));
+  for (int i = 0; i < stack.size() ; i++) {
+    if (stack[i] == nullptr) continue;
+    for (int j = i+1; j < stack.size(); j++) {
+      if (stack[j] != nullptr) {
+        stack[j]->add_child(std::move(stack[i]));
+        break;
+      }
     }
   }
 
-  logical_operator.swap(project_oper);
+  // if (predicate_oper) {
+  //   if (table_oper) {
+  //     predicate_oper->add_child(std::move(table_oper));
+  //   }
+  //   project_oper->add_child(std::move(predicate_oper));
+  // } else {
+  //   if (table_oper) {
+  //     project_oper->add_child(std::move(table_oper));
+  //   }
+  // }
+  // logical_operator.swap(project_oper);
+  logical_operator.swap(stack[stack.size()-1]);
   return RC::SUCCESS;
 }
 
+// 创建谓词执行计划
 RC LogicalPlanGenerator::create_plan(
     FilterStmt *filter_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {

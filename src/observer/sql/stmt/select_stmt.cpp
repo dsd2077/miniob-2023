@@ -77,17 +77,17 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   std::vector<Field> query_fields;
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
     const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
-
+    // select * from 
+    // 取出所有表的属性
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
         0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
-      for (Table *table : tables) {
+      for (Table *table : tables) {     
         wildcard_fields(table, query_fields);
       }
-
     } else if (!common::is_blank(relation_attr.relation_name.c_str())) {
       const char *table_name = relation_attr.relation_name.c_str();
       const char *field_name = relation_attr.attribute_name.c_str();
-
+      // select *.* from 为啥会有这种情况？
       if (0 == strcmp(table_name, "*")) {
         if (0 != strcmp(field_name, "*")) {
           LOG_WARN("invalid field name while table is *. attr=%s", field_name);
@@ -96,7 +96,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         for (Table *table : tables) {
           wildcard_fields(table, query_fields);
         }
-      } else {
+      } else { // select table.attr from
         auto iter = table_map.find(table_name);
         if (iter == table_map.end()) {
           LOG_WARN("no such table in from list: %s", table_name);
@@ -104,7 +104,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         }
 
         Table *table = iter->second;
-        if (0 == strcmp(field_name, "*")) {
+        if (0 == strcmp(field_name, "*")) {   // select tablename.* from
           wildcard_fields(table, query_fields);
         } else {
           const FieldMeta *field_meta = table->table_meta().field(field_name);
@@ -116,8 +116,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
           query_fields.push_back(Field(table, field_meta));
         }
       }
-    } else {
-      if (tables.size() != 1) {
+    } else {    // select attr from...
+      if (tables.size() != 1) {     // 只有一张表时才能直接取字段，否则必须通过tablename.attr
         LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name.c_str());
         return RC::SCHEMA_FIELD_MISSING;
       }
@@ -160,12 +160,52 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  // 创建order by子句
+  // 检查order by 中的field是否合法
+
+  std::vector<OrderByUnit> order_by_fields;
+  for (auto &order_by_node : select_sql.order_by_nodes) {
+    const RelAttrSqlNode &relation_attr = order_by_node.attribute;
+    // 检查该属性是否合法
+    auto table_name = relation_attr.relation_name;
+    auto field_name = relation_attr.attribute_name;
+    if (!common::is_blank(relation_attr.relation_name.c_str())) {
+      auto iter = table_map.find(table_name);
+      if (iter == table_map.end()) {
+        LOG_WARN("no such table in from list: %s", table_name.c_str());
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+
+      Table *table = iter->second;
+      const FieldMeta *field_meta = table->table_meta().field(field_name.c_str());
+      if (nullptr == field_meta) {
+        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name.c_str());
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      order_by_fields.push_back(OrderByUnit(Field(table, field_meta), order_by_node.direction));
+    } else {
+      if (tables.size() != 1) {     // 只有一张表时才能直接取字段，否则必须通过tablename.attr
+        LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name.c_str());
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+
+      Table *table = tables[0];
+      const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name.c_str());
+      if (nullptr == field_meta) {
+        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name.c_str());
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      order_by_fields.push_back(OrderByUnit(Field(table, field_meta), order_by_node.direction));
+    }
+  }
+
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
   // TODO add expression copy
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->order_by_fields_.swap(order_by_fields);
   stmt = select_stmt;
   return RC::SUCCESS;
 }

@@ -56,6 +56,10 @@ enum CompOp
   NO_OP
 };
 
+enum class OrderDirection {
+    ASC, DESC
+};
+
 /**
  * @brief 表示一个条件比较
  * @ingroup SQLParser
@@ -93,6 +97,11 @@ struct InnerJoinNode {
   std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
 };
 
+struct OrderByNode {
+    RelAttrSqlNode attribute;
+    OrderDirection direction;
+};
+
 
 struct SelectSqlNode
 {
@@ -100,6 +109,7 @@ struct SelectSqlNode
   std::vector<std::string>        relations;     ///< 查询的表
   std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
   std::vector<InnerJoinNode>      inner_join_clauses;
+  std::vector<OrderByNode>        order_by_nodes;
 };
 
 

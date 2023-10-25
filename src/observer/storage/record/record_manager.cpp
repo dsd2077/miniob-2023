@@ -68,7 +68,8 @@ bool RecordPageIterator::has_next() { return -1 != next_slot_num_; }
 RC RecordPageIterator::next(Record &record)
 {
   record.set_rid(page_num_, next_slot_num_);
-  record.set_data(record_page_handler_->get_record_data(record.rid().slot_num));
+  // record.set_data(record_page_handler_->get_record_data(record.rid().slot_num));    //根据slot_num获取对应的Record,巨坑，这里没有设置大小
+  record_page_handler_->get_record(&record.rid(), &record);
 
   if (next_slot_num_ >= 0) {
     next_slot_num_ = bitmap_.next_setted_bit(next_slot_num_ + 1);
@@ -645,7 +646,7 @@ bool RecordFileScanner::has_next() { return next_record_.rid().slot_num != -1; }
 
 RC RecordFileScanner::next(Record &record)
 {
-  record = next_record_;
+  record = next_record_;      // 发生浅拷贝
 
   RC rc = fetch_next_record();
   if (rc == RC::RECORD_EOF) {

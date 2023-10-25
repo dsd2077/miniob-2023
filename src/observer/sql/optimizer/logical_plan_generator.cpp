@@ -142,7 +142,9 @@ RC LogicalPlanGenerator::create_plan(
       }
     }
   }
+  logical_operator.swap(stack[stack.size()-1]);
 
+  // 官方的代码
   // if (predicate_oper) {
   //   if (table_oper) {
   //     predicate_oper->add_child(std::move(table_oper));
@@ -154,7 +156,6 @@ RC LogicalPlanGenerator::create_plan(
   //   }
   // }
   // logical_operator.swap(project_oper);
-  logical_operator.swap(stack[stack.size()-1]);
   return RC::SUCCESS;
 }
 

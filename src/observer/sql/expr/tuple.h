@@ -141,9 +141,9 @@ public:
   RowTuple() = default;
   virtual ~RowTuple()
   {
-    // for (FieldExpr *spec : speces_) {
-    // }
-    // speces_.clear();
+    for (FieldExpr *spec : speces_) {
+    }
+    speces_.clear();
   }
 
   RowTuple(const RowTuple &other)

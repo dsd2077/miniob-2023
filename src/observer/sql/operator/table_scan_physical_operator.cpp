@@ -66,8 +66,6 @@ RC TableScanPhysicalOperator::close()
 
 Tuple *TableScanPhysicalOperator::current_tuple()
 {
-  RowTuple *temp = new RowTuple();
-
   tuple_.set_record(&current_record_);
   return &tuple_;
 }

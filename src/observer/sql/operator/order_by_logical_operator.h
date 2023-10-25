@@ -10,19 +10,22 @@
 #include "sql/operator/logical_operator.h"
 #include "src/observer/sql/stmt/select_stmt.h"
 
+
+class OrderByUnit;
+
+// order by的逻辑算子只是将order_by_fields从order_by_stmt中取了出来
+// 虽然没有什么用，但是为了统一代码，还是写了一个
 class OrderByLogicalOperator : public LogicalOperator {
 public:
-  OrderByLogicalOperator(const std::vector<OrderByUnit> &order_by_fields): order_by_fields_(order_by_fields){};
+  OrderByLogicalOperator(std::vector<OrderByUnit*> &order_by_fields): order_by_fields_(order_by_fields){};
   virtual ~OrderByLogicalOperator() = default;
 
-  LogicalOperatorType type() const override
-  {
-    return LogicalOperatorType::ORDER_BY;
-  }
-  const std::vector<OrderByUnit> & order_by_fields() const {
+  LogicalOperatorType type() const override { return LogicalOperatorType::ORDER_BY; }
+
+  std::vector<OrderByUnit*> & order_by_fields() {
     return order_by_fields_;
   }
 
 private:
-  std::vector<OrderByUnit> order_by_fields_;
+  std::vector<OrderByUnit*> &order_by_fields_;
 };

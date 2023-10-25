@@ -11,12 +11,13 @@
 #include "sql/stmt/select_stmt.h"
 #include "storage/trx/trx.h"
 
+class OrderByUnit;
+
 class OrderByPhysicalOperator : public PhysicalOperator {
 public:
-  OrderByPhysicalOperator(const std::vector<OrderByUnit> &order_by_fields)
-  : order_by_fields_(order_by_fields){};
+  OrderByPhysicalOperator(std::vector<OrderByUnit *> &order_by_fields) : order_by_fields_(order_by_fields){};
 
-  virtual ~OrderByPhysicalOperator() = default;
+  virtual ~OrderByPhysicalOperator();
 
   PhysicalOperatorType type() const override
   {
@@ -28,9 +29,11 @@ public:
   RC close() override;
 
   Tuple *current_tuple() override;
+private:
+  RC fetch_and_sort_table();
 
 private:
-  std::vector<OrderByUnit> order_by_fields_;
+  std::vector<OrderByUnit* > &order_by_fields_;
   std::vector<Tuple *>     data_;
   int                      current_tuple_index_;
   Trx *                     trx_;

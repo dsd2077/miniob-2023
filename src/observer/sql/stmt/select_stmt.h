@@ -22,27 +22,13 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/stmt.h"
 #include "storage/field/field.h"
 
+// 采用类的前置申明的好处?
 class FieldMeta;
 class FilterStmt;
+class OrderByStmt;
 class Db;
 class Table;
 
-class OrderByUnit {
-public:
-  OrderByUnit() = default;
-  OrderByUnit(Field &&field, OrderDirection direction): field_(std::move(field)), direction_(direction){};
-  Field field() {
-    return field_;
-  }
-  OrderDirection direction() {
-    return direction_;
-  }
-
-
-private:
-  Field			field_;
-  OrderDirection	direction_;
-};
 
 /**
  * @brief 表示select语句
@@ -63,27 +49,15 @@ public:
   static RC create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt);
 
 public:
-  const std::vector<Table *> &tables() const
-  {
-    return tables_;
-  }
-  const std::vector<Field> &query_fields() const
-  {
-    return query_fields_;
-  }
-  const std::vector<OrderByUnit> &order_by_fields() const {
-    return order_by_fields_;
-  }
+  const std::vector<Table *> &tables() const { return tables_; }
+  const std::vector<Field> &  query_fields() const { return query_fields_; }
 
-  FilterStmt *filter_stmt() const
-  {
-    return filter_stmt_;
-  }
-
+  OrderByStmt *orderby_stmt() const { return orderby_stmt_; }
+  FilterStmt *filter_stmt() const { return filter_stmt_; }
 
 private:
   std::vector<Field> query_fields_;
   std::vector<Table *> tables_;
-  FilterStmt *filter_stmt_ = nullptr;     // where子句中的过滤条件
-  std::vector<OrderByUnit> order_by_fields_;
+  FilterStmt *filter_stmt_ = nullptr;     
+  OrderByStmt *orderby_stmt_ = nullptr;
 };

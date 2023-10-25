@@ -35,6 +35,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/explain_stmt.h"
 #include "sql/stmt/update_stmt.h"
+#include "sql/stmt/order_by_stmt.h"
 #include <memory>
 
 using namespace std;
@@ -122,10 +123,11 @@ RC LogicalPlanGenerator::create_plan(
   }
 
   unique_ptr<LogicalOperator> order_by_oper;
-  if (!select_stmt->order_by_fields().empty()) {
-    order_by_oper = std::make_unique<OrderByLogicalOperator>(select_stmt->order_by_fields());
+  rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
+    return rc;
   }
-
 
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
   std::vector<unique_ptr<LogicalOperator>> stack;
@@ -144,18 +146,6 @@ RC LogicalPlanGenerator::create_plan(
   }
   logical_operator.swap(stack[stack.size()-1]);
 
-  // 官方的代码
-  // if (predicate_oper) {
-  //   if (table_oper) {
-  //     predicate_oper->add_child(std::move(table_oper));
-  //   }
-  //   project_oper->add_child(std::move(predicate_oper));
-  // } else {
-  //   if (table_oper) {
-  //     project_oper->add_child(std::move(table_oper));
-  //   }
-  // }
-  // logical_operator.swap(project_oper);
   return RC::SUCCESS;
 }
 
@@ -278,4 +268,12 @@ RC LogicalPlanGenerator::create_plan(
   logical_operator = unique_ptr<LogicalOperator>(new ExplainLogicalOperator);
   logical_operator->add_child(std::move(child_oper));
   return rc;
+}
+
+RC LogicalPlanGenerator::create_plan(OrderByStmt *order_by_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
+  logical_operator = nullptr;
+  if (order_by_stmt != nullptr) {
+    logical_operator = std::unique_ptr<LogicalOperator>(new OrderByLogicalOperator(order_by_stmt->orderby_units()));
+  }
+  return RC::SUCCESS;
 }

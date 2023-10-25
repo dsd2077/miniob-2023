@@ -21,7 +21,6 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/parser/value.h"
 
-class Expression;
 
 /**
  * @defgroup SQLParser SQL Parser 
@@ -113,6 +112,7 @@ struct SelectSqlNode
 };
 
 
+class Expression;
 /**
  * @brief 算术表达式计算的语法树
  * @ingroup SQLParser

@@ -102,39 +102,29 @@ public:
 
   Record(const Record &other)
   {
-    // 总是采用深拷贝
     rid_   = other.rid_;
+    data_  = other.data_;
     len_   = other.len_;
     owner_ = other.owner_;
 
-    char *tmp = (char *)malloc(other.len_);
-    ASSERT(nullptr != tmp, "failed to allocate memory. size=%d", other.len_);
-    memcpy(tmp, other.data_, other.len_);
-    data_ = tmp;
-
-    // rid_   = other.rid_;
-    // data_  = other.data_;
-    // len_   = other.len_;
-    // owner_ = other.owner_;
-
-    // if (other.owner_) {
-    //   char *tmp = (char *)malloc(other.len_);
-    //   ASSERT(nullptr != tmp, "failed to allocate memory. size=%d", other.len_);
-    //   memcpy(tmp, other.data_, other.len_);
-    //   data_ = tmp;
-    // }
+    if (other.owner_) {
+      char *tmp = (char *)malloc(other.len_);
+      ASSERT(nullptr != tmp, "failed to allocate memory. size=%d", other.len_);
+      memcpy(tmp, other.data_, other.len_);
+      data_ = tmp;
+    }
   }
 
-  // Record &operator=(const Record &other)
-  // {
-  //   if (this == &other) {
-  //     return *this;
-  //   }
+  Record &operator=(const Record &other)
+  {
+    if (this == &other) {
+      return *this;
+    }
 
-  //   this->~Record();
-  //   new (this) Record(other);
-  //   return *this;
-  // }
+    this->~Record();
+    new (this) Record(other);
+    return *this;
+  }
 
   void set_data(char *data, int len = 0)
   {

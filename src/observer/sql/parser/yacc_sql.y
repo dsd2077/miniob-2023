@@ -553,7 +553,12 @@ agg_attr:
     }
     | agg_type LBRACE '*' RBRACE { // [bugfix]
       $$ = new AggregationSqlNode;
-      $$->agg_type = AggregationType::COUN_STAR;
+      // $$->agg_type = $1
+      if ($1 == AggregationType::COUN_) {
+        $$->agg_type = AggregationType::COUN_STAR;
+      } else {
+        $$->agg_type = AggregationType::INVALID;
+      }
       $$->agg_expr = RelAttrSqlNode("", "*");
       /* [TODO] free($1); */
     }

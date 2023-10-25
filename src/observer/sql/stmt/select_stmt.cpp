@@ -92,6 +92,9 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
         0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
+      if (agg_type != AggregationType::NONE && agg_type != AggregationType::COUN_STAR) {
+        return RC::SQL_SYNTAX;
+      }
       for (Table *table : tables) {
         wildcard_fields(table, query_fields);
       }
@@ -101,6 +104,9 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
       const char *field_name = relation_attr.attribute_name.c_str();
 
       if (0 == strcmp(table_name, "*")) {
+        if (agg_type != AggregationType::NONE && agg_type != AggregationType::COUN_STAR) {
+          return RC::SQL_SYNTAX;
+        }
         if (0 != strcmp(field_name, "*")) {
           LOG_WARN("invalid field name while table is *. attr=%s", field_name);
           return RC::SCHEMA_FIELD_MISSING;

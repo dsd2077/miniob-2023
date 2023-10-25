@@ -83,6 +83,7 @@ struct ConditionSqlNode
 enum class AggregationType
 {
   NONE,
+  INVALID,
   COUN_,
   COUN_STAR,
   SUM,

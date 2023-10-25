@@ -50,9 +50,9 @@ RC OrderByPhysicalOperator::open(Trx *trx) {
       right->find_cell(tuple_schema, right_value);
       int res = left_value.compare(right_value);
       if (direction == OrderDirection::ASC) {
-        return res <= 0;
+        return res < 0;
       }
-      return res >= 0;
+      return res > 0;
     });
   }
 

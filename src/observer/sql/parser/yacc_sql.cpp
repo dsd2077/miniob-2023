@@ -2089,7 +2089,7 @@ yyreduce:
         (yyval.sql_node)->selection.order_by_nodes.swap(*(yyvsp[0].order_by_list));
         delete (yyvsp[0].order_by_list);
       }
-      std::reverse((yyval.sql_node)->selection.order_by_nodes.begin(), (yyval.sql_node)->selection.order_by_nodes.end());   
+      // std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
 
     }
 #line 2096 "yacc_sql.cpp"

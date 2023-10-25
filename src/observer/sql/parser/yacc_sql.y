@@ -481,7 +481,7 @@ select_stmt:        /*  select 语句的语法解析树*/
         $$->selection.order_by_nodes.swap(*$8);
         delete $8;
       }
-      std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
+      // std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
 
     }
     ;

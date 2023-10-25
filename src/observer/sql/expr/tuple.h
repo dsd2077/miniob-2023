@@ -422,6 +422,17 @@ public:
     return new JoinedTuple(*this);
   }
 
+  JoinedTuple(const JoinedTuple &other)
+  {
+    if (other.left_) {
+      left_ = other.left_->clone();
+    }
+
+    if (other.right_) {
+      right_ = other.right_->clone();
+    }
+  }
+
   void set_left(Tuple *left)
   {
     left_ = left;

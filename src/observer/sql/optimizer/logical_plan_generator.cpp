@@ -272,7 +272,7 @@ RC LogicalPlanGenerator::create_plan(
 
 RC LogicalPlanGenerator::create_plan(OrderByStmt *order_by_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
   logical_operator = nullptr;
-  if (order_by_stmt != nullptr) {
+  if (!order_by_stmt->orderby_units().empty()) {
     logical_operator = std::unique_ptr<LogicalOperator>(new OrderByLogicalOperator(order_by_stmt->orderby_units()));
   }
   return RC::SUCCESS;

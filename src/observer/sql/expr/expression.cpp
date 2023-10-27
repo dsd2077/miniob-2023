@@ -13,7 +13,10 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/expr/expression.h"
+#include "common/lang/string.h"
 #include "sql/expr/tuple.h"
+#include "src/observer/sql/stmt/select_stmt.h"
+#include "storage/db/db.h"
 #include <regex>
 
 using namespace std;
@@ -22,10 +25,64 @@ RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
 {
   return tuple.find_cell(TupleCellSpec(table_name(), field_name()), value);
 }
+RC FieldExpr::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db) {
+  // bool with_brace = expr->with_brace;       // 括号，什么时候需要考虑括号？
+  // 没有表名字段
+  if (common::is_blank(table_name_.c_str())) {
+    if (tables.size() != 1) {
+      LOG_WARN("invalid. I do not know the attr's table. attr=%s", field_name_.c_str());
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    Table *table = tables[0];
+    const FieldMeta *field_meta = table->table_meta().field(field_name_.c_str());
+    if (nullptr == field_meta) {
+      LOG_WARN("no such field. field=%s.%s", table->name(), field_name_.c_str());
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    field_.set_table(table);
+    field_.set_field(field_meta);
+    return RC::SUCCESS;
+  } else {
+    auto iter = table_map.find(table_name_.c_str());
+    if (iter == table_map.end()) {
+      LOG_WARN("no such table in from list: %s", table_name_.c_str());
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+
+    Table *table = iter->second;
+    const FieldMeta *field_meta = table->table_meta().field(field_name_.c_str());
+    if (nullptr == field_meta) {
+      LOG_WARN("no such field. field=%s.%s", table->name(), field_name_.c_str());
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    field_.set_table(table);
+    field_.set_field(field_meta);
+
+    // TODO:表别名
+    // if (table_name_ != std::string(table->name())) {
+    //   if (tables.size() != 1) {
+    //     set_name(table_name_ + "." + field_name_);
+    //   }
+    // }
+
+    return RC::SUCCESS;
+  }
+}
 
 RC ValueExpr::get_value(const Tuple &tuple, Value &value) const
 {
   value = value_;
+  return RC::SUCCESS;
+}
+
+RC ValueExpr::init(
+    const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db)
+{
+  assert(ExprType::VALUE == type());
+  if (value_.attr_type() == DATES && !common::is_valid_date(value_.get_int())) {
+    return RC::INVALID_ARGUMENT;
+  }
+
   return RC::SUCCESS;
 }
 
@@ -86,6 +143,24 @@ ComparisonExpr::ComparisonExpr(CompOp comp, unique_ptr<Expression> left, unique_
 
 ComparisonExpr::~ComparisonExpr()
 {}
+
+RC ComparisonExpr::init(
+    const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db)
+{
+  assert(ExprType::COMPARISON == type());
+  // bool with_brace = expr->with_brace;
+  RC rc = left_->init(tables, table_map, db);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("BinaryExpression Create Left Expression Failed. RC = %d:%s", rc, strrc(rc));
+    return rc;
+  }
+  rc = right_->init(tables, table_map, db);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("BinaryExpression Create Right Expression Failed. RC = %d:%s", rc, strrc(rc));
+    return rc;
+  }
+  return RC::SUCCESS;
+}
 
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
@@ -206,9 +281,11 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-ConjunctionExpr::ConjunctionExpr(Type type, vector<unique_ptr<Expression>> &children)
-    : conjunction_type_(type), children_(std::move(children))
-{}
+
+RC ConjunctionExpr::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db) {
+  // doing nothing
+  return RC::SUCCESS;
+}
 
 RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
 {
@@ -368,4 +445,35 @@ RC ArithmeticExpr::try_get_value(Value &value) const
   }
 
   return calc_value(left_value, right_value, value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+// SubQueryExpression
+RC SubQueryExpression::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db) {
+  assert(ExprType::SUBQUERY == type());
+
+  Stmt *tmp_stmt = nullptr;
+  RC rc = SelectStmt::create(db, parsed_sql_node_->selection , table_map, tmp_stmt);
+  if (RC::SUCCESS != rc) {
+    LOG_ERROR("SubQueryExpression Create SelectStmt Failed. RC = %d:%s", rc, strrc(rc));
+    return rc;
+  }
+  // TODO:这一步在做什么？——暂时先不考虑
+  // switch (comp) {
+  //   case EXISTS_OP:
+  //   case NOT_EXISTS:
+  //     break;
+  //   default: {
+  //     if (((SelectStmt *)tmp_stmt)->projects().size() != 1) {      
+  //       return RC::SQL_SYNTAX;
+  //     }
+  //     break;
+  //   }
+  sub_stmt_ = static_cast<SelectStmt* >(tmp_stmt);
+  return RC::SUCCESS;
+}
+
+RC SubQueryExpression::get_value(const Tuple &tuple, Value &value) const {
+  return RC::SUCCESS;
 }

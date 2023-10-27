@@ -18,13 +18,17 @@ See the Mulan PSL v2 for more details. */
 #include <memory>
 
 #include "common/rc.h"
+#include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
 #include "storage/field/field.h"
 
+// 采用类的前置申明的好处?
 class FieldMeta;
 class FilterStmt;
+class OrderByStmt;
 class Db;
 class Table;
+
 
 /**
  * @brief 表示select语句
@@ -42,24 +46,24 @@ public:
   }
 
 public:
-  static RC create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt);
+  static RC create(Db *db, const SelectSqlNode &select_sql,const std::unordered_map<std::string, Table *> &parent_table_map, Stmt *&stmt);
 
 public:
-  const std::vector<Table *> &tables() const
-  {
-    return tables_;
-  }
-  const std::vector<Field> &query_fields() const
-  {
-    return query_fields_;
-  }
-  FilterStmt *filter_stmt() const
-  {
-    return filter_stmt_;
-  }
+  const std::vector<Table *> &tables() const { return tables_; }
+  const std::vector<Field> &  query_fields() const { return query_fields_; }
+
+  OrderByStmt *orderby_stmt() const { return orderby_stmt_; }
+  FilterStmt *filter_stmt() const { return filter_stmt_; }
 
 private:
-  std::vector<Field> query_fields_;
+  std::vector<Field> query_fields_;     // execute_stage用到了这个数据类型，所以难得改成Expression了
   std::vector<Table *> tables_;
-  FilterStmt *filter_stmt_ = nullptr;     // where子句中的过滤条件
+  FilterStmt *filter_stmt_ = nullptr;     
+  OrderByStmt *orderby_stmt_ = nullptr;
+  FilterStmt *inner_join_filter_stmt_ = nullptr;
+
+  // TODO:
+  // HavingStmt *having_stmt_ = nullptr;
+  // OrderByStmt *orderby_stmt_for_groupby_ = nullptr;
+  // GroupByStmt *groupby_stmt_ = nullptr;
 };

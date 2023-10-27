@@ -13,7 +13,6 @@
 #include "sql/operator/physical_operator.h"
 #include "sql/parser/parse.h"
 
-class InsertStmt;
 
 /**
  * @brief 更新物理算子

@@ -114,16 +114,20 @@ RC LogicalPlanGenerator::create_plan(
   }
 
   // TODO:如果存在inner_join_stmt构建inner_join_oper
-
+  RC rc = RC::SUCCESS;;
   unique_ptr<LogicalOperator> predicate_oper;     // 这里的predicate_oper是where子句中的过滤条件
-  RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
+  if (select_stmt->filter_stmt() != nullptr) {
+    rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
+  }
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
     return rc;
   }
 
   unique_ptr<LogicalOperator> order_by_oper;
-  rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
+  if (select_stmt->orderby_stmt() != nullptr) {
+    rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
+  }
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
     return rc;
@@ -153,28 +157,10 @@ RC LogicalPlanGenerator::create_plan(
 RC LogicalPlanGenerator::create_plan(
     FilterStmt *filter_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
-  std::vector<unique_ptr<Expression>> cmp_exprs;
-  const std::vector<FilterUnit *> &filter_units = filter_stmt->filter_units();
-  for (const FilterUnit *filter_unit : filter_units) {
-    const FilterObj &filter_obj_left = filter_unit->left();
-    const FilterObj &filter_obj_right = filter_unit->right();
-
-    unique_ptr<Expression> left(filter_obj_left.is_attr
-                                         ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
-                                         : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
-
-    unique_ptr<Expression> right(filter_obj_right.is_attr
-                                          ? static_cast<Expression *>(new FieldExpr(filter_obj_right.field))
-                                          : static_cast<Expression *>(new ValueExpr(filter_obj_right.value)));
-
-    ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));
-    cmp_exprs.emplace_back(cmp_expr);
-  }
 
   unique_ptr<PredicateLogicalOperator> predicate_oper;
-  if (!cmp_exprs.empty()) {
-    unique_ptr<ConjunctionExpr> conjunction_expr(new ConjunctionExpr(ConjunctionExpr::Type::AND, cmp_exprs));
-    predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
+  if (filter_stmt->predicate() != nullptr) {
+    predicate_oper = unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(filter_stmt->predicate())));
   }
 
   logical_operator = std::move(predicate_oper);

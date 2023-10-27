@@ -39,45 +39,65 @@ struct RelAttrSqlNode
   std::string attribute_name;  ///< attribute name              属性名
 };
 
+class Expression;
 
 /**
  * @brief 描述比较运算符
  * @ingroup SQLParser
  */
-enum CompOp 
-{
-  EQUAL_TO,     ///< "="
-  LESS_EQUAL,   ///< "<="
-  NOT_EQUAL,    ///< "<>"
-  LESS_THAN,    ///< "<"
-  GREAT_EQUAL,  ///< ">="
-  GREAT_THAN,   ///< ">"
+// 加_OP是防止关键字冲突
+typedef enum {
+  EQUAL_TO,     //"="            0
+  LESS_EQUAL,   //"<="           1
+  NOT_EQUAL,    //"<>"           2
+  LESS_THAN,    //"<"            3
+  GREAT_EQUAL,  //">="           4
+  GREAT_THAN,   //">"            5
+  LIKE_OP,      //"like"         6
+  NOT_LIKE_OP,  //"not like"     7
+  IS_NULL,      //"is null"      8
+  IS_NOT_NULL,  //"is not null"  9
+  IN_OP,        // sub_query IN      10
+  NOT_IN,       // sub_query NOT IN  11
+  EXISTS_OP,    // sub_query EXISTS  12
+  NOT_EXISTS,   // sub_query NOT EXISTS  13
+  AND_OP,       // condition and condition 14
+  OR_OP,        // condition or condition 15
   NO_OP
-};
+} CompOp;
 
-enum class OrderDirection {
-    ASC, DESC
-};
-
-/**
- * @brief 表示一个条件比较
- * @ingroup SQLParser
- * @details 条件比较就是SQL查询中的 where a>b 这种。
- * 一个条件比较是有两部分组成的，称为左边和右边。
- * 左边和右边理论上都可以是任意的数据，比如是字段（属性，列），也可以是数值常量。
- * 这个结构中记录的仅仅支持字段和值。
- */
-struct ConditionSqlNode
+enum class ExprType 
 {
-  int             left_is_attr;    ///< TRUE if left-hand side is an attribute
-                                   ///< 1时，操作符左边是属性名，0时，是属性值
-  Value           left_value;      ///< left-hand side value if left_is_attr = FALSE
-  RelAttrSqlNode  left_attr;       ///< left-hand side attribute
-  CompOp          comp;            ///< comparison operator
-  int             right_is_attr;   ///< TRUE if right-hand side is an attribute
-                                   ///< 1时，操作符右边是属性名，0时，是属性值
-  RelAttrSqlNode  right_attr;      ///< right-hand side attribute if right_is_attr = TRUE 右边的属性
-  Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
+  NONE,
+  STAR,         ///< 星号，表示所有字段
+  UNARY,        /// 单目表达式
+  ATTR,         /// 属性字段，保存属性的表名和字段名
+  FIELD,        ///< 字段。在实际执行时，根据行数据内容提取对应字段的值
+  VALUE,        ///< 常量值
+  CAST,         ///< 需要做类型转换的表达式
+  COMPARISON,   ///< 需要做比较的表达式
+  CONJUNCTION,  ///< 多个表达式使用同一种关系(AND或OR)来联结,用CONJUNCTION来存储where的所有条件
+  ARITHMETIC,   ///< 算术运算
+  AGGRFUNC,     /// 集合函数
+  SUBQUERY,     ///子查询
+  SUBLIST,      ///子查询列表
+  EXP_TYPE_NUM ,  /// 
+};
+
+typedef enum { ADD_OP, SUB_OP, MUL_OP, DIV_OP, EXP_OP_NUM } ExpOp;
+typedef enum { MAX, MIN, SUM, AVG, AGGR_FUNC_TYPE_NUM } AggrFuncType;
+typedef enum { FUNC_LENGTH, FUNC_ROUND, FUNC_DATE_FORMAT, FUNC_TYPE_NUM } FuncType;
+typedef enum { SUB_IN, SUB_NOT_IN, SUB_EXISTS, SUB_NOT_EXISTS, SUB_NORMAL, SUB_TYPE_NUM } SubQueryType;
+typedef enum { ASC_, DESC_ } OrderDirection;
+
+struct OrderByNode {
+    RelAttrSqlNode attribute;
+    OrderDirection direction;
+};
+
+struct InnerJoinNode {
+  std::string       relation_name;
+  Expression *      conditions = nullptr;    ///< 查询条件，使用AND串联起来多个条件 ConjunctionExpr
 };
 
 /**
@@ -90,29 +110,15 @@ struct ConditionSqlNode
  * where 条件 conditions，这里表示使用AND串联起来多个条件。正常的SQL语句会有OR，NOT等，
  * 甚至可以包含复杂的表达式。
  */
-
-struct InnerJoinNode {
-  std::string       relation_name;
-  std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
-};
-
-struct OrderByNode {
-    RelAttrSqlNode attribute;
-    OrderDirection direction;
-};
-
-
 struct SelectSqlNode
 {
   std::vector<RelAttrSqlNode>     attributes;    ///< attributes in select clause
   std::vector<std::string>        relations;     ///< 查询的表
-  std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
+  Expression *                    conditions = nullptr;     ///< 查询条件，使用AND串联起来多个条件
   std::vector<InnerJoinNode>      inner_join_clauses;
   std::vector<OrderByNode>        order_by_nodes;
 };
 
-
-class Expression;
 /**
  * @brief 算术表达式计算的语法树
  * @ingroup SQLParser
@@ -142,7 +148,28 @@ struct InsertSqlNode
 struct DeleteSqlNode
 {
   std::string                   relation_name;  ///< Relation to delete from
-  std::vector<ConditionSqlNode> conditions;
+  Expression *                  conditions = nullptr;
+};
+
+/**
+ * @brief 表示一个条件比较
+ * @ingroup SQLParser
+ * @details 条件比较就是SQL查询中的 where a>b 这种。
+ * 一个条件比较是有两部分组成的，称为左边和右边。
+ * 左边和右边理论上都可以是任意的数据，比如是字段（属性，列），也可以是数值常量。
+ * 这个结构中记录的仅仅支持字段和值。
+ */
+struct ConditionSqlNode
+{
+  int             left_is_attr;    ///< TRUE if left-hand side is an attribute
+                                   ///< 1时，操作符左边是属性名，0时，是属性值
+  Value           left_value;      ///< left-hand side value if left_is_attr = FALSE
+  RelAttrSqlNode  left_attr;       ///< left-hand side attribute
+  CompOp          comp;            ///< comparison operator
+  int             right_is_attr;   ///< TRUE if right-hand side is an attribute
+                                   ///< 1时，操作符右边是属性名，0时，是属性值
+  RelAttrSqlNode  right_attr;      ///< right-hand side attribute if right_is_attr = TRUE 右边的属性
+  Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
 };
 
 /**
@@ -154,7 +181,7 @@ struct UpdateSqlNode
   std::string                   relation_name;         ///< Relation to update
   std::string                   attribute_name;        ///< 更新的字段，仅支持一个字段
   Value                         value;                 ///< 更新的值，仅支持一个字段
-  std::vector<ConditionSqlNode> conditions;
+  Expression*                  conditions = nullptr;
 };
 
 /**

@@ -105,30 +105,34 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         JOIN
         ORDER
         BY 
+        OR
+        IN
+        EXISTS
+        IS
+        NOT
+        NULL_VALUE
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 // 每次匹配到一个语法规则之后生成结果的类型
 %union {
   ParsedSqlNode *                   sql_node;
-  ConditionSqlNode *                condition;
   Value *                           value;
-  enum CompOp                       comp;
+  CompOp                            comp;
   RelAttrSqlNode *                  rel_attr;
   std::vector<AttrInfoSqlNode> *    attr_infos;
   AttrInfoSqlNode *                 attr_info;
   Expression *                      expression;
   std::vector<Expression *> *       expression_list;
   std::vector<Value> *              value_list;
-  std::vector<ConditionSqlNode> *   condition_list;
   std::vector<RelAttrSqlNode> *     rel_attr_list;
   std::vector<std::string> *        relation_list;
   char *                            string;
   int                               number;
   float                             floats;
   InnerJoinNode *                   join_clause;
-  std::vector<ConditionSqlNode> *   join_conditions;          
+  Expression *                      join_conditions;          
   std::vector<InnerJoinNode> *      inner_join_list;
-  enum OrderDirection               order_direction;
+  OrderDirection               order_direction;
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
 }
@@ -143,7 +147,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
 %type <number>              type            // 返回类型(定义在上面的union中)————解析类型（下面定义）
-%type <condition>           condition
 %type <value>               value
 %type <number>              number
 %type <comp>                comp_op
@@ -151,15 +154,12 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
-%type <condition_list>      where
-%type <condition_list>      condition_list
 %type <rel_attr_list>       select_attr
 %type <relation_list>       rel_list
 %type <rel_attr_list>       attr_list
-%type <expression>          expression
 %type <expression_list>     expression_list
 %type <sql_node>            calc_stmt
-%type <sql_node>            select_stmt
+%type <sql_node>            select_stmt     
 %type <sql_node>            insert_stmt
 %type <sql_node>            update_stmt
 %type <sql_node>            delete_stmt
@@ -189,6 +189,16 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <order_by_list>       order_by_list
 %type <order_by_item>       order_by_item
 %type <order_direction>     order_direction
+%type <expression>          where
+%type <expression>          unary_expr
+%type <expression>          condition
+%type <expression>          condition_list
+%type <expression>          sub_select_expr
+%type <expression>          arithmetic_expr
+%type <expression>          sub_select_list
+%type <expression>          add_expr
+%type <expression>          mul_expr
+
 
 
 
@@ -382,7 +392,6 @@ insert_stmt:        /*insert   语句的语法解析树*/
       $$->insertion.values.emplace_back(*$6);
       std::reverse($$->insertion.values.begin(), $$->insertion.values.end());
       delete $6;
-      free($3);
     }
     ;
 
@@ -392,7 +401,7 @@ value_list:
     {
       $$ = nullptr;
     }
-    | COMMA value value_list  { 
+    | COMMA value value_list  {   
       if ($3 != nullptr) {
         $$ = $3;
       } else {
@@ -402,6 +411,7 @@ value_list:
       delete $2;
     }
     ;
+
 value:
     NUMBER {
       $$ = new Value((int)$1);
@@ -429,8 +439,7 @@ delete_stmt:    /*  delete 语句的语法解析树*/
       $$ = new ParsedSqlNode(SCF_DELETE);
       $$->deletion.relation_name = $3;
       if ($4 != nullptr) {
-        $$->deletion.conditions.swap(*$4);
-        delete $4;
+        $$->deletion.conditions = $4;
       }
       free($3);
     }
@@ -443,8 +452,7 @@ update_stmt:      /*  update 语句的语法解析树*/
       $$->update.attribute_name = $4;
       $$->update.value = *$6;
       if ($7 != nullptr) {
-        $$->update.conditions.swap(*$7);
-        delete $7;
+        $$->update.conditions = $7;
       }
       free($2);
       free($4);
@@ -473,8 +481,7 @@ select_stmt:        /*  select 语句的语法解析树*/
       std::reverse($$->selection.inner_join_clauses.begin(), $$->selection.inner_join_clauses.end());   
 
       if ($7 != nullptr) {
-        $$->selection.conditions.swap(*$7);
-        delete $7;
+        $$->selection.conditions = $7;
       }
 
       if ($8 != nullptr) {
@@ -485,6 +492,9 @@ select_stmt:        /*  select 语句的语法解析树*/
 
     }
     ;
+
+
+
 calc_stmt:
     CALC expression_list
     {
@@ -496,12 +506,12 @@ calc_stmt:
     ;
 
 expression_list:
-    expression
+    arithmetic_expr
     {
       $$ = new std::vector<Expression*>;
       $$->emplace_back($1);
     }
-    | expression COMMA expression_list
+    | arithmetic_expr COMMA expression_list
     {
       if ($3 != nullptr) {
         $$ = $3;
@@ -511,24 +521,25 @@ expression_list:
       $$->emplace_back($1);
     }
     ;
-expression:
-    expression '+' expression {
+
+arithmetic_expr:
+    arithmetic_expr '+' arithmetic_expr {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::ADD, $1, $3, sql_string, &@$);
     }
-    | expression '-' expression {
+    | arithmetic_expr '-' arithmetic_expr {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::SUB, $1, $3, sql_string, &@$);
     }
-    | expression '*' expression {
+    | arithmetic_expr '*' arithmetic_expr {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::MUL, $1, $3, sql_string, &@$);
     }
-    | expression '/' expression {
+    | arithmetic_expr '/' arithmetic_expr {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::DIV, $1, $3, sql_string, &@$);
     }
-    | LBRACE expression RBRACE {
+    | LBRACE arithmetic_expr RBRACE {
       $$ = $2;
       $$->set_name(token_name(sql_string, &@$));
     }
-    | '-' expression %prec UMINUS {
+    | '-' arithmetic_expr %prec UMINUS {
       $$ = create_arithmetic_expression(ArithmeticExpr::Type::NEGATIVE, $2, nullptr, sql_string, &@$);
     }
     | value {
@@ -611,7 +622,7 @@ rel_list:
 */
 
 // inner join语法规则
-inner_join_list:
+inner_join_list:  // 返回std::vector<InnerJoinNode> *
     /* empty */
     {
         $$ = nullptr;
@@ -626,43 +637,43 @@ inner_join_list:
     }
     ;
 
-join_clause:
+join_clause:   // 返回InnerJoinNode * 
     INNER JOIN ID join_conditions {
         $$ = new InnerJoinNode;
         $$->relation_name = $3;
-        $$->conditions.swap(*$4);
-        delete $4;
+        $$->conditions = $4;
     }
     ;
 
-join_conditions:
+join_conditions:      // 返回ConjunctionExpr* 可能为空
     // inner join可以没有on子句
     {
-        $$ = nullptr;
+      $$ = nullptr;
     }
     | ON condition {    // 如果有on关键字，则至少必须有一个condition
-      $$ = new std::vector<ConditionSqlNode>;
-      $$->emplace_back(*$2);
-      delete $2;
+      ConjunctionExpr *temp = new ConjunctionExpr();
+      temp->add_condition($2);
+      $$ = temp;
     }
     | ON condition AND condition_list {     
-      $$ = $4;
-      $$->emplace_back(*$2);
-      delete $2;
+      ConjunctionExpr *base = static_cast<ConjunctionExpr *>($4);
+      assert(base != nullptr);
+      base->add_condition($2);
+      $$ = base;
     }
     ;
 
 // order by语法规则
 order_direction:
     DESC {
-        $$ = OrderDirection::DESC;
+        $$ = OrderDirection::DESC_;
     }
     | ASC {
-        $$ = OrderDirection::ASC;
+        $$ = OrderDirection::ASC_;
     }
     | /* empty, default to ascending */
     {
-        $$ = OrderDirection::ASC;
+        $$ = OrderDirection::ASC_;
     }
     ;
 
@@ -705,79 +716,133 @@ order_by:
  *dengshudong添加的语法规则end
 */
 
-where:
-    /* empty */
-    {
-      $$ = nullptr;
+where:     // 返回Expression *
+  /* empty */ 
+  {
+    $$ = nullptr;
+  }
+  | WHERE condition_list {      
+    $$ = $2;
+  }
+  ;
+
+
+condition_list:   // 返回ConjunctionExpr*
+    condition {
+      ConjunctionExpr *temp = new ConjunctionExpr();
+      temp->add_condition($1);
+      $$ = temp;
     }
-    | WHERE condition_list {
-      $$ = $2;  
+    | condition AND condition_list {        
+      ConjunctionExpr *base = static_cast<ConjunctionExpr *>($3);
+      assert(base != nullptr);
+      base->add_condition($1);
+      $$ = base;
+    }
+    | condition OR condition_list {        
+      ConjunctionExpr *base = static_cast<ConjunctionExpr *>($3);
+      base->add_condition($1);
+      base->set_conjunction_type(ConjunctionExpr::Type::OR);
+      $$ = base;
     }
     ;
-condition_list:
-    /* empty */
-    {
-      $$ = nullptr;
+
+condition:      // 返回ComparisonExpr
+    add_expr comp_op add_expr{
+      $$ = new ComparisonExpr($2, $1, $3);
     }
-    | condition {
-      $$ = new std::vector<ConditionSqlNode>;
-      $$->emplace_back(*$1);
-      delete $1;
+    | add_expr IS NULL_VALUE {
+      // TODO
     }
-    | condition AND condition_list {        // 最长匹配原则
-      $$ = $3;
-      $$->emplace_back(*$1);
-      delete $1;
+    | add_expr IS NOT NULL_VALUE {
+      // TODO:
+    }
+    | add_expr NOT IN add_expr {
+      $$ = new ComparisonExpr(CompOp::NOT_IN, $1, $4);
+    }
+    | EXISTS add_expr {
+      Value temp_value = Value(1);      // 创建一个临时对象当做表达式
+      ValueExpr *value_expr = new ValueExpr(temp_value);
+      $$ = new ComparisonExpr(CompOp::EXISTS_OP, value_expr, $2);
+    }
+    | NOT EXISTS add_expr {
+      Value temp_value = Value(1);      // 创建一个临时对象当做表达式
+      ValueExpr *value_expr = new ValueExpr(temp_value);
+      $$ = new ComparisonExpr(CompOp::NOT_EXISTS, value_expr, $3);
     }
     ;
-condition:
-    rel_attr comp_op value
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
-      $$->left_attr = *$1;
-      $$->right_is_attr = 0;
-      $$->right_value = *$3;
-      $$->comp = $2;
 
-      delete $1;
-      delete $3;
+// 第二优先级表达式：第一优先级表达式/加法、减法
+add_expr:
+    mul_expr { $$ = $1; }    
+    | add_expr '+' mul_expr {
+      $$ = new ArithmeticExpr(ArithmeticExpr::Type::ADD, $1, $3);
     }
-    | value comp_op value 
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
-      $$->left_value = *$1;
-      $$->right_is_attr = 0;
-      $$->right_value = *$3;
-      $$->comp = $2;
-
-      delete $1;
-      delete $3;
+    | add_expr '-' mul_expr {
+      $$ = new ArithmeticExpr(ArithmeticExpr::Type::SUB, $1, $3);
     }
-    | rel_attr comp_op rel_attr
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
-      $$->left_attr = *$1;
-      $$->right_is_attr = 1;
-      $$->right_attr = *$3;
-      $$->comp = $2;
+    ;
 
-      delete $1;
-      delete $3;
+// 第一优先级表达式包括：单目、乘法、除法
+mul_expr:
+    unary_expr {
+      $$ = $1;
     }
-    | value comp_op rel_attr
-    {
-      $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
-      $$->left_value = *$1;
-      $$->right_is_attr = 1;
-      $$->right_attr = *$3;
-      $$->comp = $2;
+    | mul_expr '*' unary_expr {
+      $$ = new ArithmeticExpr(ArithmeticExpr::Type::MUL, $1, $3);
+    }
+    | mul_expr '/' unary_expr {
+      $$ = new ArithmeticExpr(ArithmeticExpr::Type::DIV, $1, $3);
+    }
+    ;
 
-      delete $1;
-      delete $3;
+// 单目表达式
+unary_expr:
+    value {
+      $$ = new ValueExpr(*$1);
+    }
+    | ID {
+      $$ = new FieldExpr($1);
+    }
+    | ID DOT ID {
+      $$ = new FieldExpr($3, $1);
+    }
+    | LBRACE add_expr RBRACE {
+      $$ = $2;
+    }
+    // | func_expr {
+    //   $$ = $1;
+    // }
+    // | aggr_func_expr {
+    //   $$ = $1;
+    // }
+    | sub_select_expr {
+       $$ = $1;
+    }
+    | sub_select_list{
+      $$ = $1;
+    }
+    ;
+
+sub_select_expr:
+  LBRACE select_stmt RBRACE 
+  {
+    // SubQueryExpression
+    $$ = new SubQueryExpression($2);
+  }
+  ;
+
+sub_select_list:
+    LBRACE value value_list RBRACE
+    {
+      std::vector<Value> *temp = $3;
+      if (temp != nullptr) {
+        temp->push_back(*$2);
+      } else {
+        temp = new std::vector<Value>{*$2};
+      }
+
+      $$ = new ListExpression(*temp);
     }
     ;
 

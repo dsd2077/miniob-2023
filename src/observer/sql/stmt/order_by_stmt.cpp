@@ -24,7 +24,7 @@ RC OrderByStmt::create(Db *db, Table *default_table, std::unordered_map<std::str
     const std::vector<OrderByNode> &orderbys, OrderByStmt *&stmt)
 {
   RC rc = RC::SUCCESS;
-  stmt = nullptr;
+  if (orderbys.size() == 0) return rc;
 
   OrderByStmt *tmp_stmt = new OrderByStmt();
   for (int i = 0; i < orderbys.size(); i++) {

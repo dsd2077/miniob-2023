@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "storage/db/db.h"
 #include "storage/table/table.h"
+#include <cassert>
 
 SelectStmt::~SelectStmt()
 {
@@ -37,7 +38,7 @@ static void wildcard_fields(Table *table, std::vector<Field> &field_metas)
   }
 }
 
-RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
+RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unordered_map<std::string, Table *> &parent_table_map, Stmt *&stmt)
 {
   if (nullptr == db) {
     LOG_WARN("invalid argument. db is null");
@@ -55,7 +56,6 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
       relations.emplace_back(inner_join_node.relation_name);
     }
   }
-
 
   for (size_t i = 0; i < relations.size(); i++) {
     const char *table_name = relations[i].c_str();
@@ -136,27 +136,48 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
 
   LOG_INFO("got %d tables in from stmt and %d fields in query stmt", tables.size(), query_fields.size());
 
+  // default_table的作用:
+  // 当选择的属性不提供表名时，从默认表中选取（也就是只有一张表时才能那么做）
   Table *default_table = nullptr;
   if (tables.size() == 1) {
     default_table = tables[0];
   }
 
-  // create filter statement in `where` statement
-  FilterStmt *filter_stmt = nullptr;
-  std::vector<ConditionSqlNode> conditions(select_sql.conditions);
-  if (!select_sql.inner_join_clauses.empty()) {
-    for (auto &inner_join_node : select_sql.inner_join_clauses) {
-      conditions.insert(conditions.end(), inner_join_node.conditions.begin(), inner_join_node.conditions.end());
+  // 创建inner_join FilterStmt
+  RC rc = RC::SUCCESS;
+  std::unordered_map<std::string, Table *> temp_table_map = table_map;
+  temp_table_map.insert(parent_table_map.begin(), parent_table_map.end());      
+  FilterStmt *inner_join_filter_stmt = nullptr;
+
+  // 将所有inner join子句中的条件聚集到一个ConjunctionExpr中
+  ConjunctionExpr *inner_join_conditions = nullptr;
+  for (int i = 0; i < select_sql.inner_join_clauses.size(); i++) {
+    auto inner_join_node = select_sql.inner_join_clauses[i];
+    if (inner_join_node.conditions == nullptr) continue;
+    auto ty = inner_join_node.conditions->type();     // 不是空指针，又拿不到type?
+    ConjunctionExpr *temp = dynamic_cast<ConjunctionExpr *>(inner_join_node.conditions);
+    assert(temp != nullptr);
+    if (inner_join_conditions == nullptr) {
+      inner_join_conditions = temp;
+      continue;
+    }
+    for (auto &expr : temp->children()) {
+      inner_join_conditions->add_condition(expr);
     }
   }
+  if (inner_join_conditions != nullptr) {
+    rc = FilterStmt::create(db, default_table, &temp_table_map, inner_join_conditions, inner_join_filter_stmt);
+  }
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("cannot construct inner join filter stmt");
+    return rc;
+  }
 
-  // 即使conditions为空filter_stmt也会创建一个新的FilterStmt
-  RC rc = FilterStmt::create(db,
-      default_table,
-      &table_map,
-      conditions.data(),
-      static_cast<int>(conditions.size()),
-      filter_stmt);
+  // create filter statement in `where` statement
+  FilterStmt *filter_stmt = nullptr;
+  if (select_sql.conditions != nullptr) {
+    rc = FilterStmt::create(db, default_table, &table_map, select_sql.conditions, filter_stmt);
+  }
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");
     return rc;
@@ -176,6 +197,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
   select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->inner_join_filter_stmt_ = inner_join_filter_stmt;
   select_stmt->orderby_stmt_ = orderby_stmt;
   stmt = select_stmt;
   return RC::SUCCESS;

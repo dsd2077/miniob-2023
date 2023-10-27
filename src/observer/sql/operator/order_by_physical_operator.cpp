@@ -54,7 +54,7 @@ RC OrderByPhysicalOperator::fetch_and_sort_table() {
       Value right_value;
       right->find_cell(tuple_schema, right_value);
       int res = left_value.compare(right_value);
-      if (direction == OrderDirection::ASC) {
+      if (direction == OrderDirection::ASC_) {
         return res < 0;
       }
       return res > 0;

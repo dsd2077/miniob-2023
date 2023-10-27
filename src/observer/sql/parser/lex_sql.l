@@ -113,6 +113,12 @@ INNER                                   RETURN_TOKEN(INNER);
 JOIN                                    RETURN_TOKEN(JOIN);
 ORDER                                   RETURN_TOKEN(ORDER);
 BY                                      RETURN_TOKEN(BY);
+NOT                                     RETURN_TOKEN(NOT);
+IN                                      RETURN_TOKEN(IN);
+EXISTS                                  RETURN_TOKEN(EXISTS);
+IS                                      RETURN_TOKEN(IS);
+NULL                                    RETURN_TOKEN(NULL_VALUE);
+
 
 INT                                     RETURN_TOKEN(INT_T);    
 DATE                                    RETURN_TOKEN(DATE_T);    // T1修改点

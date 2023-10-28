@@ -88,7 +88,7 @@ RC LogicalPlanGenerator::create_plan(CalcStmt *calc_stmt, std::unique_ptr<Logica
 RC LogicalPlanGenerator::create_plan(
     SelectStmt *select_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
-  unique_ptr<LogicalOperator> table_oper(nullptr);
+  unique_ptr<LogicalOperator> table_oper(nullptr);  // table_oper可能是TableGetLogicalOperator（单表）或者JoinLogicalOperator(多表)
 
   const std::vector<Table *> &tables = select_stmt->tables();
   const std::vector<Field> &all_fields = select_stmt->query_fields();
@@ -112,12 +112,27 @@ RC LogicalPlanGenerator::create_plan(
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
   }
+  std::unique_ptr<LogicalOperator> top_oper = std::move(table_oper);
 
-  // TODO:如果存在inner_join_stmt构建inner_join_oper
-  RC rc = RC::SUCCESS;;
-  unique_ptr<LogicalOperator> predicate_oper;     // 这里的predicate_oper是where子句中的过滤条件
+  RC rc = RC::SUCCESS;
+  // 构建inner_join_oper
+  std::unique_ptr<LogicalOperator> inner_join_predicate_oper;     
+  if (select_stmt->inner_join_filter_stmt() != nullptr) {
+    rc = create_plan(select_stmt->inner_join_filter_stmt(), inner_join_predicate_oper);
+    inner_join_predicate_oper->add_child(std::move(top_oper));      
+    top_oper = std::move(inner_join_predicate_oper);
+  }
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
+    return rc;
+  }
+
+  // 这里的predicate_oper是where子句中的过滤条件
+  unique_ptr<LogicalOperator> predicate_oper;     
   if (select_stmt->filter_stmt() != nullptr) {
     rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
+    predicate_oper->add_child(std::move(top_oper));      
+    top_oper = std::move(predicate_oper);
   }
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
@@ -127,6 +142,8 @@ RC LogicalPlanGenerator::create_plan(
   unique_ptr<LogicalOperator> order_by_oper;
   if (select_stmt->orderby_stmt() != nullptr) {
     rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
+    order_by_oper->add_child(std::move(top_oper));      
+    top_oper = std::move(order_by_oper);
   }
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
@@ -134,21 +151,9 @@ RC LogicalPlanGenerator::create_plan(
   }
 
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
-  std::vector<unique_ptr<LogicalOperator>> stack;
-  stack.push_back(std::move(table_oper));
-  stack.push_back(std::move(predicate_oper));
-  stack.push_back(std::move(order_by_oper));
-  stack.push_back(std::move(project_oper));
-  for (int i = 0; i < stack.size() ; i++) {
-    if (stack[i] == nullptr) continue;
-    for (int j = i+1; j < stack.size(); j++) {
-      if (stack[j] != nullptr) {
-        stack[j]->add_child(std::move(stack[i]));
-        break;
-      }
-    }
-  }
-  logical_operator.swap(stack[stack.size()-1]);
+  project_oper->add_child(std::move(top_oper));
+
+  logical_operator.swap(project_oper);
 
   return RC::SUCCESS;
 }

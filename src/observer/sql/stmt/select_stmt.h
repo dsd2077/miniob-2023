@@ -54,6 +54,7 @@ public:
 
   OrderByStmt *orderby_stmt() const { return orderby_stmt_; }
   FilterStmt *filter_stmt() const { return filter_stmt_; }
+  FilterStmt *inner_join_filter_stmt() const { return inner_join_filter_stmt_; }
 
 private:
   std::vector<Field> query_fields_;     // execute_stage用到了这个数据类型，所以难得改成Expression了

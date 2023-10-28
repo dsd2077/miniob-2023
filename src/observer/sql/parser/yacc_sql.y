@@ -111,6 +111,9 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         IS
         NOT
         NULL_VALUE
+        LIKE_T
+        NOT_LIKE_T
+
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 // 每次匹配到一个语法规则之后生成结果的类型
@@ -853,6 +856,8 @@ comp_op:
     | LE { $$ = LESS_EQUAL; }
     | GE { $$ = GREAT_EQUAL; }
     | NE { $$ = NOT_EQUAL; }
+    | LIKE_T { $$ = LIKE; }
+    | NOT_LIKE_T {$$ = NOT_LIKE; }
     ;
 
 load_data_stmt:

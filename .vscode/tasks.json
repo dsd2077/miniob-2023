@@ -13,7 +13,11 @@
       },
       {
           "label": "make",
-          "command": "make"
+          "command": "make",
+          "args": [
+            "-j",
+            "6"
+          ]
       },
       {
           "label": "CMake Build",

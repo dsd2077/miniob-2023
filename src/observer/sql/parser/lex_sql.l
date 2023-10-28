@@ -111,6 +111,8 @@ COMMIT                                  RETURN_TOKEN(TRX_COMMIT);
 ROLLBACK                                RETURN_TOKEN(TRX_ROLLBACK);
 INNER                                   RETURN_TOKEN(INNER);
 JOIN                                    RETURN_TOKEN(JOIN);
+LIKE                                    RETURN_TOKEN(LIKE_T); // T5
+NOT{WHITE_SAPCE}LIKE                    RETURN_TOKEN(NOT_LIKE_T);  // T5
 ORDER                                   RETURN_TOKEN(ORDER);
 BY                                      RETURN_TOKEN(BY);
 NOT                                     RETURN_TOKEN(NOT);
@@ -124,7 +126,6 @@ INT                                     RETURN_TOKEN(INT_T);
 DATE                                    RETURN_TOKEN(DATE_T);    // T1修改点
 CHAR                                    RETURN_TOKEN(STRING_T);
 FLOAT                                   RETURN_TOKEN(FLOAT_T);
-
 LOAD                                    RETURN_TOKEN(LOAD);
 DATA                                    RETURN_TOKEN(DATA);
 INFILE                                  RETURN_TOKEN(INFILE);

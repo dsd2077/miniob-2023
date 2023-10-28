@@ -17,6 +17,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/tuple.h"
 #include "src/observer/sql/stmt/select_stmt.h"
 #include "storage/db/db.h"
+#include <regex>
+
 using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
@@ -184,6 +186,46 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     case GREAT_THAN: {
       result = (cmp_result > 0);
     } break;
+    case LIKE: {
+      // LIKE: 不使用Value::compare的通用方法
+      std::string right_str = right.get_string();
+      std::string left_str = left.get_string();
+      std::string re = "^";
+      for(int i = 0 ; i < right_str.size() ; i ++ ) {
+        if(right_str[i] == '%') {
+          re += ".*";
+        }else if(right_str[i] == '_') {
+          re += ".";
+        }else {
+          re += right_str[i];
+        }
+      }
+      re += "$";
+
+      std::regex like_regex(re);  // like的正则表达式
+      std::smatch matcher;
+      result = std::regex_search(left_str, matcher, like_regex);  // 如果left_str符合right_str，那么将会返回正确结果
+    }break;
+    case NOT_LIKE: {
+      // NOT_LIKE: 不使用Value::compare的通用方法
+      std::string right_str = right.get_string();
+      std::string left_str = left.get_string();
+      std::string re = "^";
+      for(int i = 0 ; i < right_str.size() ; i ++ ) {
+        if(right_str[i] == '%') {
+          re += ".*";
+        }else if(right_str[i] == '_') {
+          re += ".";
+        }else {
+          re += right_str[i];
+        }
+      }
+      re += "$";
+
+      std::regex like_regex(re);  // like的正则表达式
+      std::smatch matcher;
+      result = !std::regex_search(left_str, matcher, like_regex);  // 如果left_str符合right_str，那么将会返回正确结果
+    }break;
     default: {
       LOG_WARN("unsupported comparison. %d", comp_);
       rc = RC::INTERNAL;

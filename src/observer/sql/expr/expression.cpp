@@ -186,7 +186,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     case GREAT_THAN: {
       result = (cmp_result > 0);
     } break;
-    case LIKE: {
+    case LIKE_OP: {
       // LIKE: 不使用Value::compare的通用方法
       std::string right_str = right.get_string();
       std::string left_str = left.get_string();
@@ -206,7 +206,7 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
       std::smatch matcher;
       result = std::regex_search(left_str, matcher, like_regex);  // 如果left_str符合right_str，那么将会返回正确结果
     }break;
-    case NOT_LIKE: {
+    case NOT_LIKE_OP: {
       // NOT_LIKE: 不使用Value::compare的通用方法
       std::string right_str = right.get_string();
       std::string left_str = left.get_string();

@@ -856,8 +856,8 @@ comp_op:
     | LE { $$ = LESS_EQUAL; }
     | GE { $$ = GREAT_EQUAL; }
     | NE { $$ = NOT_EQUAL; }
-    | LIKE_T { $$ = LIKE; }
-    | NOT_LIKE_T {$$ = NOT_LIKE; }
+    | LIKE_T { $$ = LIKE_OP; }
+    | NOT_LIKE_T {$$ = NOT_LIKE_OP; }
     ;
 
 load_data_stmt:

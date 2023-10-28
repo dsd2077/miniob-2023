@@ -361,6 +361,7 @@ public:
     return ExprType::SUBQUERY;
   }
   RC get_value(const Tuple &tuple, Value &value) const override;
+  RC get_value(Value &final_cell) const;
   AttrType value_type() const override { return BOOLEANS; }
 
   void set_sub_query_stmt(SelectStmt *sub_stmt)

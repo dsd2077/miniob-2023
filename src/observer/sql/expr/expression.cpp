@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/expression.h"
 #include "common/lang/string.h"
 #include "sql/expr/tuple.h"
+#include "sql/operator/project_physical_operator.h"
 #include "src/observer/sql/stmt/select_stmt.h"
 #include "storage/db/db.h"
 #include <regex>
@@ -258,18 +259,126 @@ RC ComparisonExpr::try_get_value(Value &cell) const
 
 RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
 {
+  RC rc = RC::SUCCESS;
   Value left_value;
   Value right_value;
-
-  RC rc = left_->get_value(tuple, left_value);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to get value of left expression. rc=%s", strrc(rc));
-    return rc;
+    // 0. for [not] exist
+  if (CompOp::EXISTS_OP == comp_ || CompOp::NOT_EXISTS == comp_) {
+    // assert(nullptr == left_expr);
+    assert(ExprType::SUBQUERY == right_->type());
+    SubQueryExpression *sub_query = static_cast<SubQueryExpression*>(right_.get());
+    
+    sub_query->open_sub_query();
+    // TODO compound with parent tuple
+    RC tmp_rc = sub_query->get_value(tuple, right_value);
+    if (RC::SUCCESS != tmp_rc && RC::RECORD_EOF != tmp_rc) {
+      return tmp_rc;
+    }
+    sub_query->close_sub_query();
+    bool res = CompOp::EXISTS_OP == comp_ ? (RC::SUCCESS == tmp_rc) : (RC::RECORD_EOF == tmp_rc);
+    value.set_boolean(res);
+    return RC::SUCCESS;
   }
-  rc = right_->get_value(tuple, right_value);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
-    return rc;
+
+    // 1. for [not] in
+  if (CompOp::IN_OP == comp_ || CompOp::NOT_IN == comp_) {
+    rc = left_->get_value(tuple, left_value);
+    if (RC::SUCCESS != rc) {
+      return rc;
+    }
+    // 考虑none
+    if (left_value.is_null()) {
+      value.set_boolean(false);  // null don't in/not in any list
+      return RC::SUCCESS;
+    }
+    std::vector<Value> right_values;
+    right_values.emplace_back(Value());
+    RC tmp_rc = RC::SUCCESS;
+    if (ExprType::SUBQUERY == right_->type()) {
+      SubQueryExpression *sub_query = static_cast<SubQueryExpression*>(right_.get());
+      sub_query->open_sub_query();
+      while (RC::SUCCESS == (tmp_rc = sub_query->get_value(tuple, right_values.back()))) {
+        right_values.emplace_back(Value());
+      }
+      sub_query->close_sub_query();
+      if (RC::RECORD_EOF != tmp_rc) {
+        LOG_ERROR("[NOT] IN Get SubQuery Value Failed. RC = %d:%s", tmp_rc, strrc(tmp_rc));
+        return tmp_rc;
+      }
+      right_values.pop_back();  // pop null cell for record_eof
+    } else {
+      assert(ExprType::SUBLIST == right_->type());
+      ListExpression *sub_query = static_cast<ListExpression*>(right_.get());
+      right_values = sub_query->get_tuple_cells();
+    }
+    // 考虑null值
+    auto has_null = [](const std::vector<Value> &cells) {
+      for (auto &cell : cells) {
+        if (cell.is_null()) {
+          return true;
+        }
+      }
+      return false;
+    };
+    bool res = CompOp::IN_OP == comp_ ? left_value.in_cells(right_values)
+                                      : (has_null(right_values) ? false : left_value.not_in_cells(right_values));
+    value.set_boolean(res);
+    return RC::SUCCESS;
+  }
+
+  auto get_cell_for_sub_query = [](const SubQueryExpression *expr, const Tuple &tuple, Value &cell) {
+    expr->open_sub_query();
+    RC rc = expr->get_value(tuple, cell);
+    if (RC::RECORD_EOF == rc) {
+      // e.g. a = select a  -> a = null
+      cell.set_null();
+    } else if (RC::SUCCESS == rc) {
+      Value tmp_cell;
+      if (RC::SUCCESS == (rc = expr->get_value(tuple, tmp_cell))) {
+        // e.g. a = select a  -> a = (1, 2, 3)
+        // std::cout << "Should not have rows more than 1" << std::endl;
+        expr->close_sub_query();
+        return RC::INTERNAL;
+      }
+    } else {
+      expr->close_sub_query();
+      return rc;
+    }
+    expr->close_sub_query();
+    return RC::SUCCESS;
+  };
+
+  if (ExprType::SUBQUERY == left_->type()) {
+    SubQueryExpression *left_sub_query = static_cast<SubQueryExpression *>(left_.get());
+    if (RC::SUCCESS != (rc = get_cell_for_sub_query(left_sub_query, tuple, left_value))) {
+      LOG_ERROR("Predicate get left cell for sub_query failed. RC = %d:%s", rc, strrc(rc));
+      return rc;
+    }
+  } else {
+    if (RC::SUCCESS != (rc = left_->get_value(tuple, left_value))) {
+      LOG_ERROR("Predicate get left cell failed. RC = %d:%s", rc, strrc(rc));
+      return rc;
+    }
+  }
+
+  // 0. for is [not] null
+  if (CompOp::IS_NULL == comp_) {
+    assert(right_value.is_null());
+    bool res = left_value.is_null();
+    value.set_boolean(res);
+    return RC::SUCCESS;
+  }
+  if (CompOp::IS_NOT_NULL == comp_) {
+    assert(right_value.is_null());
+    bool res = !left_value.is_null();
+    value.set_boolean(res);
+    return RC::SUCCESS;
+  }
+
+    // 1. check null
+  if (left_value.is_null() || right_value.is_null()) {
+    value.set_boolean(false);
+    return RC::SUCCESS;
   }
 
   bool bool_value = false;
@@ -296,7 +405,7 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
   }
 
   Value tmp_value;
-  for (const unique_ptr<Expression> &expr : children_) {
+  for (const unique_ptr<Expression> &expr : children_) {      // child全部是ComparisonExpr
     rc = expr->get_value(tuple, tmp_value);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));
@@ -474,6 +583,39 @@ RC SubQueryExpression::init(const std::vector<Table *> &tables, const std::unord
   return RC::SUCCESS;
 }
 
-RC SubQueryExpression::get_value(const Tuple &tuple, Value &value) const {
-  return RC::SUCCESS;
+RC SubQueryExpression::open_sub_query() const
+{
+  assert(nullptr != sub_top_oper_);
+  return sub_top_oper_->open(nullptr);   // TODO:
+}
+
+RC SubQueryExpression::get_value(const Tuple &tuple, Value &final_cell) const
+{
+  assert(nullptr != sub_top_oper_);
+  sub_top_oper_->set_parent_tuple(&tuple);  // set parent tuple
+  return get_value(final_cell);
+}
+
+RC SubQueryExpression::get_value(Value &final_cell) const
+{
+  RC rc = sub_top_oper_->next();
+  if (RC::RECORD_EOF == rc) {
+    final_cell.set_null();
+  }
+  if (RC::SUCCESS != rc) {
+    return rc;
+  }
+  Tuple *child_tuple = sub_top_oper_->current_tuple();
+  if (nullptr == child_tuple) {
+    LOG_WARN("failed to get current record. rc=%s", strrc(rc));
+    return RC::INTERNAL;
+  }
+  rc = child_tuple->cell_at(0, final_cell);  // only need the first cell
+  return rc;
+}
+
+RC SubQueryExpression::close_sub_query() const
+{
+  assert(nullptr != sub_top_oper_);
+  return sub_top_oper_->close();
 }

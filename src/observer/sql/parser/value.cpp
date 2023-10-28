@@ -171,6 +171,7 @@ void Value::set_value(const Value &value)
     case UNDEFINED: {
       ASSERT(false, "got an invalid value type");
     } break;
+    case NULLS: break;
   }
 }
 

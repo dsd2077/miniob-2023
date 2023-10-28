@@ -858,6 +858,8 @@ comp_op:
     | NE { $$ = NOT_EQUAL; }
     | LIKE_T { $$ = LIKE_OP; }
     | NOT_LIKE_T {$$ = NOT_LIKE_OP; }
+    | IN { $$ = IN_OP; }
+    | EXISTS {$$ = EXISTS_OP; }
     ;
 
 load_data_stmt:

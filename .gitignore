@@ -30,6 +30,4 @@ src/observer/sql/executor/observer.log.*
 src/observer/storage/persist/observer.log.*
 src/observer/sql/parser/observer.log.*
 src/observer/session/observer.log.*
-src/observer/sql/parser/yacc_sql.cpp
-src/observer/sql/parser/yacc_sql.hpp
 #*#

@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/optimizer/logical_plan_generator.h"
 
+#include "sql/expr/expression.h"
 #include "sql/operator/logical_operator.h"
 #include "sql/operator/calc_logical_operator.h"
 #include "sql/operator/project_logical_operator.h"
@@ -27,6 +28,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/explain_logical_operator.h"
 #include "sql/operator/order_by_logical_operator.h"
 
+#include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/calc_stmt.h"
 #include "sql/stmt/select_stmt.h"
@@ -100,8 +102,6 @@ RC LogicalPlanGenerator::create_plan(
       }
     }
 
-    // cross join是返回所有字段，还是select的字段？如果只返回select字段，下面的filter要怎么进行过滤？——即过滤字段不在select字段中
-    // 应该是所有字段，fields传进去并没有使用
     unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, true/*readonly*/));
     if (table_oper == nullptr) {
       table_oper = std::move(table_get_oper);   
@@ -130,6 +130,15 @@ RC LogicalPlanGenerator::create_plan(
   // 这里的predicate_oper是where子句中的过滤条件
   unique_ptr<LogicalOperator> predicate_oper;     
   if (select_stmt->filter_stmt() != nullptr) {
+    // 为子查询生成逻辑执行计划
+    // bug:为子查询生成逻辑执行计划的过程中filter_stmt()->predicate()转移走了
+    ConjunctionExpr * temp = dynamic_cast<ConjunctionExpr*>(select_stmt->filter_stmt()->predicate().get());
+    assert(temp != nullptr);
+    for (auto &expr : temp->children()) {   // child为ComparisonExpr
+      create_plan_for_subquery(expr);
+    }
+
+    auto ty = select_stmt->filter_stmt()->predicate()->type();
     rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
     predicate_oper->add_child(std::move(top_oper));      
     top_oper = std::move(predicate_oper);
@@ -156,6 +165,32 @@ RC LogicalPlanGenerator::create_plan(
   logical_operator.swap(project_oper);
 
   return RC::SUCCESS;
+}
+
+RC LogicalPlanGenerator::create_plan_for_subquery(std::unique_ptr<Expression> &expr) {
+  RC rc = RC::SUCCESS;
+  // process sub query
+  auto process_sub_query_expr = [&](std::unique_ptr<Expression> &expr) {
+    if (ExprType::SUBQUERY == expr->type()) {
+      SubQueryExpression* sub_query_expr = dynamic_cast<SubQueryExpression *>(expr.get()) ;
+      SelectStmt *sub_select = sub_query_expr->get_sub_query_stmt();
+      unique_ptr<LogicalOperator> logical_operator;
+      if (RC::SUCCESS != (rc = create_plan(sub_select, logical_operator))) {   
+        return rc;
+      }
+      assert(nullptr != logical_operator);
+      sub_query_expr->set_logical_oper(logical_operator.release());
+    }
+    return RC::SUCCESS;
+  };
+
+  ComparisonExpr *temp = dynamic_cast<ComparisonExpr *>(expr.get());
+
+  if (RC::SUCCESS != (rc = process_sub_query_expr(temp->left()))) {
+    return rc;
+  }
+
+  return process_sub_query_expr(temp->right());
 }
 
 // 创建谓词执行计划

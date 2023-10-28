@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "sql/expr/tuple.h"
 #include "sql/operator/project_physical_operator.h"
+#include "sql/operator/project_logical_operator.h"
 #include "src/observer/sql/stmt/select_stmt.h"
 #include "storage/db/db.h"
 #include <regex>
@@ -361,6 +362,19 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
     }
   }
 
+  if (ExprType::SUBQUERY == right_->type()) {
+    SubQueryExpression *right_sub_query = static_cast<SubQueryExpression *>(right_.get());
+    if (RC::SUCCESS != (rc = get_cell_for_sub_query(right_sub_query, tuple, right_value))) {
+      LOG_ERROR("Predicate get right cell for sub_query failed. RC = %d:%s", rc, strrc(rc));
+      return rc;
+    }
+  } else {
+    if (RC::SUCCESS != (rc = right_->get_value(tuple, right_value))) {
+      LOG_ERROR("Predicate get right cell failed. RC = %d:%s", rc, strrc(rc));
+      return rc;
+    }
+  }
+
   // 0. for is [not] null
   if (CompOp::IS_NULL == comp_) {
     assert(right_value.is_null());
@@ -585,27 +599,27 @@ RC SubQueryExpression::init(const std::vector<Table *> &tables, const std::unord
 
 RC SubQueryExpression::open_sub_query() const
 {
-  assert(nullptr != sub_top_oper_);
-  return sub_top_oper_->open(nullptr);   // TODO:
+  assert(nullptr != physical_oper_);     //
+  return physical_oper_->open(nullptr);   
 }
 
 RC SubQueryExpression::get_value(const Tuple &tuple, Value &final_cell) const
 {
-  assert(nullptr != sub_top_oper_);
-  sub_top_oper_->set_parent_tuple(&tuple);  // set parent tuple
+  assert(nullptr != physical_oper_);
+  physical_oper_->set_parent_tuple(&tuple);  // set parent tuple
   return get_value(final_cell);
 }
 
 RC SubQueryExpression::get_value(Value &final_cell) const
 {
-  RC rc = sub_top_oper_->next();
+  RC rc = physical_oper_->next();
   if (RC::RECORD_EOF == rc) {
     final_cell.set_null();
   }
   if (RC::SUCCESS != rc) {
     return rc;
   }
-  Tuple *child_tuple = sub_top_oper_->current_tuple();
+  Tuple *child_tuple = physical_oper_->current_tuple();
   if (nullptr == child_tuple) {
     LOG_WARN("failed to get current record. rc=%s", strrc(rc));
     return RC::INTERNAL;
@@ -616,6 +630,6 @@ RC SubQueryExpression::get_value(Value &final_cell) const
 
 RC SubQueryExpression::close_sub_query() const
 {
-  assert(nullptr != sub_top_oper_);
-  return sub_top_oper_->close();
+  assert(nullptr != physical_oper_);
+  return physical_oper_->close();
 }

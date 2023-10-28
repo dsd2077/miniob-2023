@@ -55,7 +55,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %parse-param { void * scanner }
 
 //标识tokens
-// TODO:这里的token是什么含义？
 %token  SEMICOLON
         CREATE
         DROP
@@ -357,7 +356,7 @@ attr_def_list:
     ;
     
 attr_def:
-    ID type LBRACE number RBRACE 
+    ID type LBRACE number RBRACE    // name char(50)
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
@@ -365,7 +364,24 @@ attr_def:
       $$->length = $4;
       free($1);
     }
-    | ID type
+    |ID type LBRACE number RBRACE NOT NULL_VALUE
+		{
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = $4;
+      free($1);
+		}
+    |ID type LBRACE number RBRACE NULL_VALUE
+		{
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = $4;
+      $$->nullable = true;
+      free($1);
+		}
+    | ID type                       // age float
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
@@ -373,7 +389,25 @@ attr_def:
       $$->length = 4;
       free($1);
     }
+    |ID type NOT NULL_VALUE
+		{
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = 4;
+      free($1);
+		}
+    |ID type NULL_VALUE
+		{
+      $$ = new AttrInfoSqlNode;
+      $$->type = (AttrType)$2;
+      $$->name = $1;
+      $$->length = 4;
+      $$->nullable = true;
+      free($1);
+		}
     ;
+
 number:
     NUMBER {$$ = $1;}
     ;

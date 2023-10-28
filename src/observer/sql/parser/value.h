@@ -79,7 +79,7 @@ public:
   bool in_cells(const std::vector<Value> &cells) const
   {
     for (auto &cell : cells) {
-      if (compare(cell)) {
+      if (compare(cell) == 0) {
         return true;
       }
     }
@@ -90,7 +90,7 @@ public:
   bool not_in_cells(const std::vector<Value> &cells) const
   {
     for (auto &cell : cells) {
-      if (compare(cell)) {
+      if (compare(cell) == 0) {
         return false;
       }
     }

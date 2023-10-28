@@ -14,10 +14,11 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include "sql/parser/parse_defs.h"
 #include <memory>
 #include <vector>
-
 #include "sql/expr/expression.h"
+
 
 /**
  * @brief 逻辑算子

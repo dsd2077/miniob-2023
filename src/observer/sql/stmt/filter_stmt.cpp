@@ -34,6 +34,7 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
   FilterStmt *tmp_stmt = new FilterStmt();
 
   for (auto &expr : conjunction_expr->children()) {
+    // 初始化子表达式
     rc = expr->init(std::vector<Table *>{default_table}, *table_map, db);
     if (rc != RC::SUCCESS) {
       delete tmp_stmt;
@@ -41,7 +42,9 @@ RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::stri
       return rc;
     }
   }
-  tmp_stmt->set_predicate(conjunction_expr);
+  // 根表达式的所有权交给filter_stmt,如果conjunction_expr中有子查询表达式，
+  // 在为子表达式创建filter_stmt时会将子表达式的所有权转移给另外一个filter_stmt
+  tmp_stmt->set_predicate(conjunction_expr);      
 
   stmt = tmp_stmt;
   return rc;

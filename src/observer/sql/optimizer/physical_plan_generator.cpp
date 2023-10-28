@@ -38,6 +38,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "sql/operator/order_by_logical_operator.h"
 #include "sql/operator/order_by_physical_operator.h"
+#include "sql/parser/parse_defs.h"
 
 using namespace std;
 
@@ -177,10 +178,48 @@ RC PhysicalPlanGenerator::create_plan(PredicateLogicalOperator &pred_oper, uniqu
   vector<unique_ptr<Expression>> &expressions = pred_oper.expressions();
   ASSERT(expressions.size() == 1, "predicate logical operator's children should be 1");
 
+  auto tp1 = expressions.front()->type();
   unique_ptr<Expression> expression = std::move(expressions.front());
+
+  // 创建子查询的物理计划
+  if (ExprType::CONJUNCTION == expression->type()) {
+    ConjunctionExpr *temp = dynamic_cast<ConjunctionExpr *>(expression.get());
+    assert(temp != nullptr);
+    for (auto &expr : temp->children()) {  // child为ComparisonExpr
+      create_plan_for_subquery(expr);
+    }
+  } else if (ExprType::COMPARISON == expression->type()) {
+    create_plan_for_subquery(expression);
+  }
+
   oper = unique_ptr<PhysicalOperator>(new PredicatePhysicalOperator(std::move(expression)));
   oper->add_child(std::move(child_phy_oper));
   return rc;
+}
+
+RC PhysicalPlanGenerator::create_plan_for_subquery(std::unique_ptr<Expression> &expr) {
+  RC rc = RC::SUCCESS;
+  // process sub query
+  if (ExprType::SUBQUERY == expr->type()) {
+    SubQueryExpression *         sub_query_expr = dynamic_cast<SubQueryExpression *>(expr.get());
+    unique_ptr<PhysicalOperator> physical_operator;
+    ProjectLogicalOperator *logical_oper = dynamic_cast<ProjectLogicalOperator *>(sub_query_expr->get_logical_oper());
+    if (RC::SUCCESS != (rc = create_plan(*logical_oper, physical_operator))) {
+      return rc;
+    }
+    assert(nullptr != physical_operator);
+    sub_query_expr->set_physical_oper(physical_operator.release());
+    return RC::SUCCESS;
+  } else if (ExprType::COMPARISON == expr->type()) {
+    ComparisonExpr *temp = dynamic_cast<ComparisonExpr *>(expr.get());
+    assert(temp != nullptr);
+
+    if (RC::SUCCESS != (rc = create_plan_for_subquery(temp->left()))) {
+      return rc;
+    }
+    return create_plan_for_subquery(temp->right());
+  }
+  return RC::SUCCESS;
 }
 
 RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, unique_ptr<PhysicalOperator> &oper)

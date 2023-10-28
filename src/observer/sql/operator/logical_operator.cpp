@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/operator/logical_operator.h"
+#include "sql/expr/expression.h"
 
 LogicalOperator::~LogicalOperator()
 {}

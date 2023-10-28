@@ -21,7 +21,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/parser/value.h"
 
-
+class Expression;
 /**
  * @defgroup SQLParser SQL Parser 
  */
@@ -39,7 +39,7 @@ struct RelAttrSqlNode
   std::string attribute_name;  ///< attribute name              属性名
 };
 
-class Expression;
+// class Expression;
 
 /**
  * @brief 描述比较运算符
@@ -196,6 +196,7 @@ struct AttrInfoSqlNode
   AttrType    type;       ///< Type of attribute
   std::string name;       ///< Attribute name
   size_t      length;     ///< Length of attribute
+  bool        nullable = false;     // 默认不可为空
 };
 
 /**

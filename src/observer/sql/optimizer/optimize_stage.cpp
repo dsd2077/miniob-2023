@@ -42,7 +42,7 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
     return rc;
   }
 
-  rc = rewrite(logical_operator);
+  rc = rewrite(logical_operator);   // 难道是因为改写的问题？
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
     return rc;

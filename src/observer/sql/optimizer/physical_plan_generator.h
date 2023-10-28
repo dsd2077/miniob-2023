@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/rc.h"
 #include "sql/operator/physical_operator.h"
 #include "sql/operator/logical_operator.h"
+#include "sql/parser/parse_defs.h"
 
 class TableGetLogicalOperator;
 class PredicateLogicalOperator;
@@ -56,4 +57,5 @@ private:
   RC create_plan(JoinLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(CalcLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(OrderByLogicalOperator &order_by_oper, std::unique_ptr<PhysicalOperator> &oper);
+  RC create_plan_for_subquery(std::unique_ptr<Expression> &expr);
 };

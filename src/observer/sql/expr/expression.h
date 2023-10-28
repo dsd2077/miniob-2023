@@ -26,7 +26,8 @@ See the Mulan PSL v2 for more details. */
 class Tuple;
 class SelectStmt;
 class ProjectPhysicalOperator;
-
+class PhysicalOperator;
+class LogicalOperator;
 /**
  * @defgroup Expression
  * @brief 表达式
@@ -374,14 +375,24 @@ public:
     return sub_stmt_;
   }
 
-  void set_sub_query_top_oper(ProjectPhysicalOperator *oper)
+  void set_physical_oper(PhysicalOperator *oper)
   {
-    sub_top_oper_ = oper;
+    physical_oper_ = oper;
   }
 
-  ProjectPhysicalOperator *get_sub_query_top_oper() const
+  void set_logical_oper(LogicalOperator *oper)
   {
-    return sub_top_oper_;
+    logical_oper_ = oper;
+  }
+
+  PhysicalOperator *get_physical_oper() const
+  {
+    return physical_oper_;
+  }
+
+  LogicalOperator *get_logical_oper() 
+  {
+    return logical_oper_;
   }
 
   RC open_sub_query() const;
@@ -393,7 +404,8 @@ public:
 private:
   ParsedSqlNode *parsed_sql_node_ = nullptr;      // 存储select语句的相关信息
   SelectStmt *sub_stmt_ = nullptr;
-  ProjectPhysicalOperator *sub_top_oper_ = nullptr;
+  PhysicalOperator *physical_oper_ = nullptr;
+  LogicalOperator *logical_oper_ = nullptr;
 };
 
 class ListExpression : public Expression {

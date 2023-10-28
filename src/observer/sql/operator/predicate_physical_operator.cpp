@@ -47,7 +47,7 @@ RC PredicatePhysicalOperator::next()
     }
 
     Value value;
-    rc = expression_->get_value(*tuple, value);     
+    rc = expression_->get_value(*tuple, value);     //这里不对，应该进入ConjunctionExpr
     if (rc != RC::SUCCESS) {
       return rc;
     }

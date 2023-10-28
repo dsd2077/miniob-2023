@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/rc.h"
 #include "sql/expr/tuple.h"
+#include "sql/expr/expression.h"
 
 class Record;
 class TupleCellSpec;

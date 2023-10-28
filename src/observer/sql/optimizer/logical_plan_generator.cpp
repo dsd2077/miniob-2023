@@ -218,7 +218,6 @@ RC LogicalPlanGenerator::create_plan(
 RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
   // 为where子句创建计划
   Table *table = update_stmt->table();
-  FilterStmt *filter_stmt = update_stmt->filter_stmt();
   std::vector<Field> fields;
   for (int i = table->table_meta().sys_field_num(); i < table->table_meta().field_num(); i++) {
     const FieldMeta *field_meta = table->table_meta().field(i);
@@ -226,8 +225,11 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<Lo
   }
   unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, false/*readonly*/));
 
+  RC rc = RC::SUCCESS;
   unique_ptr<LogicalOperator> predicate_oper;       
-  RC rc = create_plan(filter_stmt, predicate_oper);
+  if( update_stmt->filter_stmt() != nullptr) {
+    rc = create_plan(update_stmt->filter_stmt(), predicate_oper);
+  }
   if (rc != RC::SUCCESS) {
     return rc;
   }

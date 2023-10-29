@@ -28,7 +28,7 @@ Rewriter::Rewriter()
 RC Rewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bool &change_made)
 {
   RC rc = RC::SUCCESS;
-
+  auto ty = oper->type();
   change_made = false;
   for (std::unique_ptr<RewriteRule> &rule : rewrite_rules_) {
     bool sub_change_made = false;

@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "event/sql_event.h"
 #include "sql/stmt/stmt.h"
 #include "sql/executor/create_index_executor.h"
+#include "sql/executor/create_unique_index_executor.h"
 #include "sql/executor/create_table_executor.h"
 #include "sql/executor/drop_table_executor.h"
 #include "sql/executor/desc_table_executor.h"
@@ -39,6 +40,11 @@ RC CommandExecutor::execute(SQLStageEvent *sql_event)
       CreateIndexExecutor executor;
       return executor.execute(sql_event);
     } break;
+
+    case StmtType::CREATE_UNIQUE_INDEX: {
+      CreateUniqueIndexExecutor executor;
+      return executor.execute(sql_event);
+    }
 
     case StmtType::CREATE_TABLE: {
       CreateTableExecutor executor;

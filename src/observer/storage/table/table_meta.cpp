@@ -132,6 +132,19 @@ const FieldMeta *TableMeta::field(const char *name) const
   return nullptr;
 }
 
+void TableMeta::fields_by_attrs(std::vector<FieldMeta> &res, std::vector<std::string> &attr_names) const
+{
+  for(int i = 0 ; i < attr_names.size() ; i ++ ) {
+    for(int j = 0 ; j < fields_.size(); j ++ ) {
+      if(strcmp(fields_[j].name(), attr_names[i].c_str()) == 0) {
+        // 字段名相同，加入结果
+        res.emplace_back(fields_[j]);
+        break;
+      }
+    }
+  }
+}
+
 const FieldMeta *TableMeta::find_field_by_offset(int offset) const
 {
   for (const FieldMeta &field : fields_) {
@@ -165,14 +178,47 @@ const IndexMeta *TableMeta::index(const char *name) const
   return nullptr;
 }
 
+// 这个方法是写死的，认为一个字段只会对应一个index，对于只有单列的查询
+// 这里保留，改为适应多列索引，再添加一个专门的接口适应多列索引
 const IndexMeta *TableMeta::find_index_by_field(const char *field) const
 {
   for (const IndexMeta &index : indexes_) {
-    if (0 == strcmp(index.field(), field)) {
-      return &index;
+    // if (0 == strcmp(index.field(), field)) {
+    //   return &index;
+    // }
+    std::vector<std::string> index_fields_name;
+    index.fields(index_fields_name);
+    for(int i = 0 ; i < index_fields_name.size() ; i ++ ) {
+      if(0 == strcmp(index_fields_name[i].c_str(), field)) {
+        return &index;
+      }
     }
   }
   return nullptr;
+}
+
+// 多列联合索引匹配
+const IndexMeta *TableMeta::find_index_by_fields(std::vector<const char *> fields) const
+{
+  for(const IndexMeta &index : indexes_) {
+    // 先解析出当前索引主管的所有列
+    std::vector<std::string> index_fields_name;
+    index.fields(index_fields_name);  // 查找完全匹配所有字段的索引
+    int cnt = 0;
+    for(int i = 0 ; i < index_fields_name.size() ; i ++ ) {
+      for(int j = 0 ; j < fields.size() ; j ++) {
+        if(strcmp(index_fields_name[i].c_str(), fields[j]) == 0) {
+          cnt ++;
+          break;
+        }
+      }
+    }
+    if(cnt == index_fields_name.size() && cnt == fields.size()) {
+      // 完全匹配，找到了对应索引
+      return &index;
+    }
+  }
+  return nullptr; // 没有找到相应索引
 }
 
 const IndexMeta *TableMeta::index(int i) const

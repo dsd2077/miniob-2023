@@ -277,13 +277,20 @@ desc_table_stmt:
     ;
 
 create_index_stmt:    /*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE
+    CREATE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
       CreateIndexSqlNode &create_index = $$->create_index;
       create_index.index_name = $3;
       create_index.relation_name = $5;
-      create_index.attribute_name = $7;
+
+      std::vector<RelAttrSqlNode> *attrs = $8;
+      if(attrs == nullptr) {
+        attrs = new std::vector<RelAttrSqlNode>;
+      }
+      create_index.attributes_names.swap(*attrs);
+      create_index.attributes_names.emplace_back(*$7);
+      std::reverse(create_index.attributes_names.begin(), create_index.attributes_names.end());
       free($3);
       free($5);
       free($7);
@@ -330,7 +337,7 @@ attr_def_list:
       } else {
         $$ = new std::vector<AttrInfoSqlNode>;
       }
-      $$->emplace_back(*$2);
+      $$->emplace_back(*$2);  // 按照语法树递归执行，最后一个attr将会放到vector的第一个位置，所以在调用attr_def_list的部分需要reverse
       delete $2;
     }
     ;

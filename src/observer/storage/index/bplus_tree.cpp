@@ -60,7 +60,11 @@ PageNum IndexNodeHandler::page_num() const
 
 int IndexNodeHandler::key_size() const
 {
-  return header_.key_length;
+  int sz = 0;
+  for(int i = 0 ; i < header_.attr_lengths.size() ; i ++ ) {
+    sz += header_.attr_lengths[i];
+  }
+  return sz;
 }
 
 int IndexNodeHandler::value_size() const
@@ -423,6 +427,7 @@ void InternalIndexNodeHandler::insert(const char *key, PageNum page_num, const K
 {
   int insert_position = -1;
   lookup(comparator, key, nullptr, &insert_position);
+  // std::cout << "find insert_position : " << insert_position << std::endl;
   if (insert_position < size()) {
     memmove(__item_at(insert_position + 1), __item_at(insert_position), (static_cast<size_t>(size()) - insert_position) * item_size());
   }
@@ -471,7 +476,7 @@ int InternalIndexNodeHandler::lookup(const KeyComparator &comparator, const char
   if (insert_position) {
     *insert_position = ret;
   }
-
+  // std::cout << "insert position: " << ret << std::endl;
   if (ret >= size || comparator(key, __key_at(ret)) < 0) {
     return ret - 1;
   }
@@ -745,7 +750,90 @@ RC BplusTreeHandler::sync()
   return disk_buffer_pool_->flush_all_pages();
 }
 
-RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size /* = -1*/,
+// RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size /* = -1*/,
+//     int leaf_max_size /* = -1 */)
+// {
+//   BufferPoolManager &bpm = BufferPoolManager::instance();
+//   RC rc = bpm.create_file(file_name);
+//   if (rc != RC::SUCCESS) {
+//     LOG_WARN("Failed to create file. file name=%s, rc=%d:%s", file_name, rc, strrc(rc));
+//     return rc;
+//   }
+//   LOG_INFO("Successfully create index file:%s", file_name);
+
+//   DiskBufferPool *bp = nullptr;
+//   rc = bpm.open_file(file_name, bp);
+//   if (rc != RC::SUCCESS) {
+//     LOG_WARN("Failed to open file. file name=%s, rc=%d:%s", file_name, rc, strrc(rc));
+//     return rc;
+//   }
+//   LOG_INFO("Successfully open index file %s.", file_name);
+
+//   Frame *header_frame;
+//   rc = bp->allocate_page(&header_frame);
+//   if (rc != RC::SUCCESS) {
+//     LOG_WARN("failed to allocate header page for bplus tree. rc=%d:%s", rc, strrc(rc));
+//     bpm.close_file(file_name);
+//     return rc;
+//   }
+
+//   if (header_frame->page_num() != FIRST_INDEX_PAGE) {
+//     LOG_WARN("header page num should be %d but got %d. is it a new file : %s",
+//              FIRST_INDEX_PAGE, header_frame->page_num(), file_name);
+//     bpm.close_file(file_name);
+//     return RC::INTERNAL;
+//   }
+
+//   if (internal_max_size < 0) {
+//     internal_max_size = calc_internal_page_capacity(attr_length);
+//   }
+//   if (leaf_max_size < 0) {
+//     leaf_max_size = calc_leaf_page_capacity(attr_length);
+//   }
+
+//   char *pdata = header_frame->data();
+//   IndexFileHeader *file_header = (IndexFileHeader *)pdata;
+//   file_header->attr_length = attr_length;
+//   file_header->key_length = attr_length + sizeof(RID);
+//   file_header->attr_type = attr_type;
+//   file_header->internal_max_size = internal_max_size;
+//   file_header->leaf_max_size = leaf_max_size;
+//   file_header->root_page = BP_INVALID_PAGE_NUM;
+
+//   header_frame->mark_dirty();
+
+//   disk_buffer_pool_ = bp;
+
+//   memcpy(&file_header_, pdata, sizeof(file_header_)); // 没明白这里的操作
+//   header_dirty_ = false;
+//   bp->unpin_page(header_frame);
+
+//   mem_pool_item_ = make_unique<common::MemPoolItem>(file_name);
+//   if (mem_pool_item_->init(file_header->key_length) < 0) {
+//     LOG_WARN("Failed to init memory pool for index %s", file_name);
+//     close();
+//     return RC::NOMEM;
+//   }
+
+//   key_comparator_.init(file_header->attr_type, file_header->attr_length);
+//   key_printer_.init(file_header->attr_type, file_header->attr_length);
+
+//   this->sync();
+
+//   LOG_INFO("Successfully create index %s", file_name);
+//   return RC::SUCCESS;
+// }
+
+RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size, int leaf_max_size)
+{
+  std::vector<AttrType> attr_types;
+  std::vector<int> attr_lengths;
+  attr_types.emplace_back(attr_type);
+  attr_lengths.emplace_back(attr_length);
+  return create(file_name, attr_types, attr_lengths, internal_max_size, leaf_max_size);
+}
+
+RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_types, std::vector<int> attr_lengths, int internal_max_size /* = -1*/,
     int leaf_max_size /* = -1 */)
 {
   BufferPoolManager &bpm = BufferPoolManager::instance();
@@ -779,18 +867,30 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
     return RC::INTERNAL;
   }
 
+  int total_length = 0;
+  for(int i = 0 ; i < attr_lengths.size() ; i ++ ) {
+    total_length += attr_lengths[i];
+  }
+
   if (internal_max_size < 0) {
-    internal_max_size = calc_internal_page_capacity(attr_length);
+    internal_max_size = calc_internal_page_capacity(total_length);
   }
   if (leaf_max_size < 0) {
-    leaf_max_size = calc_leaf_page_capacity(attr_length);
+    leaf_max_size = calc_leaf_page_capacity(total_length);
   }
 
   char *pdata = header_frame->data();
   IndexFileHeader *file_header = (IndexFileHeader *)pdata;
-  file_header->attr_length = attr_length;
-  file_header->key_length = attr_length + sizeof(RID);
-  file_header->attr_type = attr_type;
+  // file_header->attr_length = total_length;
+  // file_header->attr_length = total_length;
+  for(int i = 0 ; i < attr_lengths.size() ; i ++ ) {
+    file_header->attr_lengths.emplace_back(attr_lengths[i]);
+  }
+  // file_header->key_length = total_length + sizeof(RID); // 内节点中一个entry的大小？
+  // file_header->attr_type = attr_type;
+  for(int i = 0 ; i < attr_types.size() ; i ++ ) {
+    file_header->attr_type_list.emplace_back(attr_types[i]);
+  }
   file_header->internal_max_size = internal_max_size;
   file_header->leaf_max_size = leaf_max_size;
   file_header->root_page = BP_INVALID_PAGE_NUM;
@@ -799,25 +899,32 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
 
   disk_buffer_pool_ = bp;
 
-  memcpy(&file_header_, pdata, sizeof(file_header_));
-  header_dirty_ = false;
+  memcpy(&file_header_, pdata, sizeof(file_header_)); // 把头页面信息写入file_header_
+  header_dirty_ = false;    // 第一次写入不算脏？
   bp->unpin_page(header_frame);
 
-  mem_pool_item_ = make_unique<common::MemPoolItem>(file_name);
-  if (mem_pool_item_->init(file_header->key_length) < 0) {
+  mem_pool_item_ = make_unique<common::MemPoolItem>(file_name); // 内存缓冲池的一项，一个文件对应一项？
+  // 接下来要根据一个节点的大小设置内存池单元大小
+  int key_length = 0;
+  for(int i = 0 ; i < file_header_.attr_lengths.size() ; i ++ ) {
+    key_length += file_header_.attr_lengths[i];
+  }
+  key_length += sizeof(RID);
+  if (mem_pool_item_->init(key_length) < 0) {
     LOG_WARN("Failed to init memory pool for index %s", file_name);
     close();
     return RC::NOMEM;
   }
 
-  key_comparator_.init(file_header->attr_type, file_header->attr_length);
-  key_printer_.init(file_header->attr_type, file_header->attr_length);
+  key_comparator_.init(file_header->attr_type_list, file_header->attr_lengths);
+  key_printer_.init(file_header->attr_type_list, file_header->attr_lengths);
 
   this->sync();
 
   LOG_INFO("Successfully create index %s", file_name);
   return RC::SUCCESS;
 }
+
 
 RC BplusTreeHandler::open(const char *file_name)
 {
@@ -848,7 +955,11 @@ RC BplusTreeHandler::open(const char *file_name)
   disk_buffer_pool_ = disk_buffer_pool;
 
   mem_pool_item_ = make_unique<common::MemPoolItem>(file_name);
-  if (mem_pool_item_->init(file_header_.key_length) < 0) {
+  int key_length = 0;
+  for(int i = 0 ; i < file_header_.attr_lengths.size() ; i ++ ) {
+    key_length += file_header_.attr_lengths[i];
+  }
+  if (mem_pool_item_->init(key_length) < 0) {
     LOG_WARN("Failed to init memory pool for index %s", file_name);
     close();
     return RC::NOMEM;
@@ -857,8 +968,8 @@ RC BplusTreeHandler::open(const char *file_name)
   // close old page_handle
   disk_buffer_pool->unpin_page(frame);
 
-  key_comparator_.init(file_header_.attr_type, file_header_.attr_length);
-  key_printer_.init(file_header_.attr_type, file_header_.attr_length);
+  key_comparator_.init(file_header_.attr_type_list, file_header_.attr_lengths);
+  key_printer_.init(file_header_.attr_type_list, file_header_.attr_lengths);
   LOG_INFO("Successfully open index %s", file_name);
   return RC::SUCCESS;
 }
@@ -1024,7 +1135,11 @@ bool BplusTreeHandler::validate_leaf_link(LatchMemo &latch_memo)
   PageNum next_page_num = leaf_node.next_page();
 
   MemPoolItem::unique_ptr prev_key = mem_pool_item_->alloc_unique_ptr();
-  memcpy(prev_key.get(), leaf_node.key_at(leaf_node.size() - 1), file_header_.key_length);
+  int key_length = 0;
+  for(int i = 0 ; i < file_header_.attr_lengths.size() ; i ++ ) {
+    key_length += file_header_.attr_lengths[i];
+  }
+  memcpy(prev_key.get(), leaf_node.key_at(leaf_node.size() - 1), key_length);
 
   bool result = true;
   while (result && next_page_num != BP_INVALID_PAGE_NUM) {
@@ -1041,7 +1156,7 @@ bool BplusTreeHandler::validate_leaf_link(LatchMemo &latch_memo)
     }
 
     next_page_num = leaf_node.next_page();
-    memcpy(prev_key.get(), leaf_node.key_at(leaf_node.size() - 1), file_header_.key_length);
+    memcpy(prev_key.get(), leaf_node.key_at(leaf_node.size() - 1), key_length);
   }
 
   // can do more things
@@ -1091,7 +1206,7 @@ RC BplusTreeHandler::left_most_page(LatchMemo &latch_memo, Frame *&frame)
   return find_leaf_internal(latch_memo, BplusTreeOperationType::READ, child_page_getter, frame);
 }
 
-RC BplusTreeHandler::find_leaf_internal(
+RC BplusTreeHandler::find_leaf_internal(  // 在叶子节点中寻找由child_page_getter确定的内容
     LatchMemo &latch_memo, BplusTreeOperationType op, 
     const std::function<PageNum(InternalIndexNodeHandler &)> &child_page_getter, 
     Frame *&frame)
@@ -1355,8 +1470,16 @@ MemPoolItem::unique_ptr BplusTreeHandler::make_key(const char *user_key, const R
     LOG_WARN("Failed to alloc memory for key.");
     return nullptr;
   }
-  memcpy(static_cast<char *>(key.get()), user_key, file_header_.attr_length);
-  memcpy(static_cast<char *>(key.get()) + file_header_.attr_length, &rid, sizeof(rid));
+
+  int offset = 0;
+  for(int i = 0 ; i < file_header_.attr_lengths.size() ; i ++ ) { // 组装合适的key
+    memcpy(static_cast<char *>(key.get()) + offset, user_key + offset, file_header_.attr_lengths[i]); // Key
+    memcpy(static_cast<char *>(key.get()) + offset + file_header_.attr_lengths[i], &rid, sizeof(rid));  // Value
+    offset += file_header_.attr_lengths[i];
+  }
+
+  // memcpy(static_cast<char *>(key.get()), user_key, file_header_.attr_length); // 将user_key复制到新申请的空间中去
+  // memcpy(static_cast<char *>(key.get()) + file_header_.attr_length, &rid, sizeof(rid)); // 将rid复制到新申请的空间中去（紧接着user_key）
   return key;
 }
 
@@ -1620,15 +1743,26 @@ RC BplusTreeHandler::delete_entry_internal(LatchMemo &latch_memo, Frame *leaf_fr
 
 RC BplusTreeHandler::delete_entry(const char *user_key, const RID *rid)
 {
-  MemPoolItem::unique_ptr pkey = mem_pool_item_->alloc_unique_ptr();
+  if(nullptr == user_key) {
+    LOG_WARN("User key is null");
+    return RC::INVALID_ARGUMENT;
+  }
+
+  common::MemPoolItem::unique_ptr pkey = make_key(user_key, *rid);
+
+  // MemPoolItem::unique_ptr pkey = mem_pool_item_->alloc_unique_ptr();
   if (nullptr == pkey) {
-    LOG_WARN("Failed to alloc memory for key. size=%d", file_header_.key_length);
+    int sz = 0;
+    for(int i = 0 ; i < file_header_.attr_lengths.size() ; i ++ ) {
+      sz += file_header_.attr_lengths[i];
+    }
+    LOG_WARN("Failed to alloc memory for key. size=%d", sz);
     return RC::NOMEM;
   }
   char *key = static_cast<char *>(pkey.get());
 
-  memcpy(key, user_key, file_header_.attr_length);
-  memcpy(key + file_header_.attr_length, rid, sizeof(*rid));
+  // memcpy(key, user_key, file_header_.attr_length);
+  // memcpy(key + file_header_.attr_length, rid, sizeof(*rid));
 
   BplusTreeOperationType op = BplusTreeOperationType::DELETE;
   LatchMemo latch_memo(disk_buffer_pool_);
@@ -1673,14 +1807,36 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   first_emitted_ = false;
 
   // 校验输入的键值是否是合法范围
+  // 左右边界检查，这里需要修改，改为支持多列索引
   if (left_user_key && right_user_key) {
-    const auto &attr_comparator = tree_handler_.key_comparator_.attr_comparator();
-    const int result = attr_comparator(left_user_key, right_user_key);
-    if (result > 0 ||  // left < right
-                       // left == right but is (left,right)/[left,right) or (left,right]
-        (result == 0 && (left_inclusive == false || right_inclusive == false))) {
+    // const auto &attr_comparator = tree_handler_.key_comparator_.attr_comparator();
+    // const int result = attr_comparator(left_user_key, right_user_key);
+    const int result = tree_handler_.key_comparator_.attrs_comparator()(left_user_key, right_user_key);  // 多列比较
+    if(result > 0 || 
+          (result == 0) && (left_inclusive == false || right_inclusive == false)) {
       return RC::INVALID_ARGUMENT;
     }
+    // int result = 0;
+    // int neq = 0;
+    // for(int i = 0 ; i < attr_comparators.size() ; i ++ ) {
+    //   result = attr_comparators[i](left_user_key, right_user_key);
+    //   if(result > 0) {  // 如果发现left_user_key有字段>right，就说明这个区间写的是有问题的
+    //     return RC::INVALID_ARGUMENT;
+    //   }
+    //   if(result < 0) {
+    //     neq = 1; // 一定不相等
+    //   }
+    // }
+    // if(!neq && (left_inclusive == false || right_inclusive == false)) {
+    //   // 如果不相等，那么就是合法的，如果相等，说明意图是单点查询，需要查看区间是否闭合，不闭合就是错误的
+    //   return RC::INVALID_ARGUMENT;
+    // }
+    // const int result = tree_handler_.key_comparator_(left_user_key, right_user_key);
+    // if (result > 0 ||  // left < right
+    //                    // left == right but is (left,right)/[left,right) or (left,right]
+    //     (result == 0 && (left_inclusive == false || right_inclusive == false))) {
+    //   return RC::INVALID_ARGUMENT;
+    // }
   }
 
   if (nullptr == left_user_key) {
@@ -1694,35 +1850,49 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   } else {
 
     char *fixed_left_key = const_cast<char *>(left_user_key);
-    if (tree_handler_.file_header_.attr_type == CHARS) {
-      bool should_inclusive_after_fix = false;
-      rc = fix_user_key(left_user_key, left_len, true /*greater*/, &fixed_left_key, &should_inclusive_after_fix);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("failed to fix left user key. rc=%s", strrc(rc));
-        return rc;
-      }
+    // int offset = 0;
+    // for(int i = 0 ; i < tree_handler_.file_header_.attr_type_list.size() ; i ++ ) {
+    //   if(tree_handler_.file_header_.attr_type_list[i] == CHARS) {
+    //     bool should_inclusive_after_fix = false;
+    //     rc = fix_user_key(left_user_key + offset, tree_handler_.file_header_.attr_lengths[i], true, &fixed_left_key, &should_inclusive_after_fix);
+    //     if(rc != RC::SUCCESS) {
+    //       LOG_WARN("failed to fix left user key. rc=%s", strrc(rc));
+    //       return rc;
+    //     }
+    //     if(should_inclusive_after_fix) {
+    //       left_inclusive = false;
+    //     }
+    //   }
+    // }
+    // if (tree_handler_.file_header_.attr_type == CHARS) {  // 这里原来是单列的，单列属性如果是字符串，字符串长度是不一定的，所以这里需要对字符串进行定长
+    //   bool should_inclusive_after_fix = false;
+    //   rc = fix_user_key(left_user_key, left_len, true /*greater*/, &fixed_left_key, &should_inclusive_after_fix);
+    //   if (rc != RC::SUCCESS) {
+    //     LOG_WARN("failed to fix left user key. rc=%s", strrc(rc));
+    //     return rc;
+    //   }
 
-      if (should_inclusive_after_fix) {
-        left_inclusive = true;
-      }
-    }
+    //   if (should_inclusive_after_fix) {
+    //     left_inclusive = true;
+    //   }
+    // }
 
     MemPoolItem::unique_ptr left_pkey;
     if (left_inclusive) {
-      left_pkey = tree_handler_.make_key(fixed_left_key, *RID::min());
+      left_pkey = tree_handler_.make_key(fixed_left_key, *RID::min());  // {page_num: 0, slot_num: 0} left_pkey中含有fixed_left_key的内容和rid，
     } else {
-      left_pkey = tree_handler_.make_key(fixed_left_key, *RID::max());
+      left_pkey = tree_handler_.make_key(fixed_left_key, *RID::max());  // {page_num: max, slot_num: max} 为什么要设置RID呢？？
     }
 
     const char *left_key = (const char *)left_pkey.get();
 
-    if (fixed_left_key != left_user_key) {
-      delete[] fixed_left_key;
-      fixed_left_key = nullptr;
-    }
+    // if (fixed_left_key != left_user_key) {  // 如果是char类型，那么fixed_left_key将不再与left_user_key地址相同，而left_pkey中保存了一个完整的entry，所以这里就释放掉一个多余的指针空间
+    //   delete[] fixed_left_key;
+    //   fixed_left_key = nullptr;
+    // }
 
-    rc = tree_handler_.find_leaf(latch_memo_, BplusTreeOperationType::READ, left_key, current_frame_);
-    if (rc == RC::EMPTY) {
+    rc = tree_handler_.find_leaf(latch_memo_, BplusTreeOperationType::READ, left_key, current_frame_);  // 查找最左叶子节点
+    if (rc == RC::EMPTY) {  // 没有left_key存在
       rc = RC::SUCCESS;
       current_frame_ = nullptr;
       return rc;
@@ -1743,12 +1913,12 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
         return RC::SUCCESS;
       }
 
-      rc = latch_memo_.get_page(next_page_num, current_frame_);
+      rc = latch_memo_.get_page(next_page_num, current_frame_); // 获取下一页
       if (rc != RC::SUCCESS) {
         LOG_WARN("failed to fetch next page. page num=%d, rc=%s", next_page_num, strrc(rc));
         return rc;
       }
-      latch_memo_.slatch(current_frame_);
+      latch_memo_.slatch(current_frame_); // 设置共享锁
 
       left_index = 0;
     }
@@ -1762,17 +1932,17 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
 
     char *fixed_right_key = const_cast<char *>(right_user_key);
     bool should_include_after_fix = false;
-    if (tree_handler_.file_header_.attr_type == CHARS) {
-      rc = fix_user_key(right_user_key, right_len, false /*want_greater*/, &fixed_right_key, &should_include_after_fix);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("failed to fix right user key. rc=%s", strrc(rc));
-        return rc;
-      }
+    // if (tree_handler_.file_header_.attr_type == CHARS) {
+    //   rc = fix_user_key(right_user_key, right_len, false /*want_greater*/, &fixed_right_key, &should_include_after_fix);
+    //   if (rc != RC::SUCCESS) {
+    //     LOG_WARN("failed to fix right user key. rc=%s", strrc(rc));
+    //     return rc;
+    //   }
 
-      if (should_include_after_fix) {
-        right_inclusive = true;
-      }
-    }
+    //   if (should_include_after_fix) {
+    //     right_inclusive = true;
+    //   }
+    // }
     if (right_inclusive) {
       right_key_ = tree_handler_.make_key(fixed_right_key, *RID::max());
     } else {
@@ -1798,7 +1968,7 @@ void BplusTreeScanner::fetch_item(RID &rid)
   memcpy(&rid, node.value_at(iter_index_), sizeof(rid));
 }
 
-bool BplusTreeScanner::touch_end()
+bool BplusTreeScanner::touch_end()  // 检查当前游标iter_index_所在的key是否抵达了scanner确定的右边界，如果抵达了那么就结束遍历
 {
   if (right_key_ == nullptr) {
     return false;
@@ -1869,53 +2039,53 @@ RC BplusTreeScanner::close()
   return RC::SUCCESS;
 }
 
-RC BplusTreeScanner::fix_user_key(
-    const char *user_key, int key_len, bool want_greater, char **fixed_key, bool *should_inclusive)
-{
-  if (nullptr == fixed_key || nullptr == should_inclusive) {
-    return RC::INVALID_ARGUMENT;
-  }
+// RC BplusTreeScanner::fix_user_key(
+//     const char *user_key, int key_len, bool want_greater, char **fixed_key, bool *should_inclusive)
+// {
+//   if (nullptr == fixed_key || nullptr == should_inclusive) {
+//     return RC::INVALID_ARGUMENT;
+//   }
 
-  // 这里很粗暴，变长字段才需要做调整，其它默认都不需要做调整
-  assert(tree_handler_.file_header_.attr_type == CHARS);
-  assert(strlen(user_key) >= static_cast<size_t>(key_len));
+//   // 这里很粗暴，变长字段才需要做调整，其它默认都不需要做调整
+//   assert(tree_handler_.file_header_.attr_type == CHARS);
+//   assert(strlen(user_key) >= static_cast<size_t>(key_len));
 
-  *should_inclusive = false;
+//   *should_inclusive = false;
 
-  int32_t attr_length = tree_handler_.file_header_.attr_length;
-  char *key_buf = new (std::nothrow) char[attr_length];
-  if (nullptr == key_buf) {
-    return RC::NOMEM;
-  }
+//   int32_t attr_length = tree_handler_.file_header_.attr_length;
+//   char *key_buf = new (std::nothrow) char[attr_length];
+//   if (nullptr == key_buf) {
+//     return RC::NOMEM;
+//   }
 
-  if (key_len <= attr_length) {
-    memcpy(key_buf, user_key, key_len);
-    memset(key_buf + key_len, 0, attr_length - key_len);
+//   if (key_len <= attr_length) {
+//     memcpy(key_buf, user_key, key_len);
+//     memset(key_buf + key_len, 0, attr_length - key_len);  // 0填充
 
-    *fixed_key = key_buf;
-    return RC::SUCCESS;
-  }
+//     *fixed_key = key_buf;
+//     return RC::SUCCESS;
+//   }
 
-  // key_len > attr_length
-  memcpy(key_buf, user_key, attr_length);
+//   // key_len > attr_length
+//   memcpy(key_buf, user_key, attr_length);
 
-  char c = user_key[attr_length];
-  if (c == 0) {
-    *fixed_key = key_buf;
-    return RC::SUCCESS;
-  }
+//   char c = user_key[attr_length];
+//   if (c == 0) {
+//     *fixed_key = key_buf;
+//     return RC::SUCCESS;
+//   }
 
-  // 扫描 >=/> user_key 的数据
-  // 示例：>=/> ABCD1 的数据，attr_length=4,
-  //      等价于扫描 >= ABCE 的数据
-  // 如果是扫描 <=/< user_key的数据
-  // 示例：<=/< ABCD1  <==> <= ABCD  (attr_length=4)
-  // NOTE: 假设都是普通的ASCII字符，不包含二进制字符，使用char不会溢出
-  *should_inclusive = true;
-  if (want_greater) {
-    key_buf[attr_length - 1]++;
-  }
+//   // 扫描 >=/> user_key 的数据
+//   // 示例：>=/> ABCD1 的数据，attr_length=4,
+//   //      等价于扫描 >= ABCE 的数据
+//   // 如果是扫描 <=/< user_key的数据
+//   // 示例：<=/< ABCD1  <==> <= ABCD  (attr_length=4)
+//   // NOTE: 假设都是普通的ASCII字符，不包含二进制字符，使用char不会溢出
+//   *should_inclusive = true;
+//   if (want_greater) {
+//     key_buf[attr_length - 1]++;
+//   }
 
-  *fixed_key = key_buf;
-  return RC::SUCCESS;
-}
+//   *fixed_key = key_buf;
+//   return RC::SUCCESS;
+// }

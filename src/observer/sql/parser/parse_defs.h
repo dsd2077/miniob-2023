@@ -193,7 +193,8 @@ struct CreateIndexSqlNode
 {
   std::string index_name;      ///< Index name
   std::string relation_name;   ///< Relation name
-  std::string attribute_name;  ///< Attribute name
+  // std::string attribute_name;  ///< Attribute name
+  std::vector<RelAttrSqlNode> attributes_names;  ///< 多列索引
 };
 
 /**
@@ -204,6 +205,18 @@ struct DropIndexSqlNode
 {
   std::string index_name;     ///< Index name
   std::string relation_name;  ///< Relation name
+};
+
+/**
+ * T11
+ * @brief 创建一个支持多列的唯一索引
+ * @ingroup SQLParser
+*/
+struct CreateUniqueIndexSqlNode
+{
+  std::string index_name;                     ///< Index name
+  std::string relation_name;                  ///< Relation name
+  std::vector<std::string> attributes_names;  ///< Attributes names
 };
 
 /**
@@ -279,6 +292,7 @@ enum SqlCommandFlag
   SCF_CREATE_TABLE,
   SCF_DROP_TABLE,
   SCF_CREATE_INDEX,
+  SCF_CREATE_UNIQUE_INDEX,  // T11
   SCF_DROP_INDEX,
   SCF_SYNC,
   SCF_SHOW_TABLES,
@@ -310,6 +324,7 @@ public:
   CreateTableSqlNode        create_table;
   DropTableSqlNode          drop_table;
   CreateIndexSqlNode        create_index;
+  CreateUniqueIndexSqlNode  create_unique_index;  // T11 创建唯一索引
   DropIndexSqlNode          drop_index;
   DescTableSqlNode          desc_table;
   LoadDataSqlNode           load_data;

@@ -87,10 +87,12 @@ public:
 
 protected:
   RC init(const IndexMeta &index_meta, const FieldMeta &field_meta);
+  RC init(const IndexMeta &index_meta, std::vector<FieldMeta> &fields_metas);  // 重载Index的初始化函数
 
 protected:
   IndexMeta index_meta_;  ///< 索引的元数据
-  FieldMeta field_meta_;  ///< 当前实现仅考虑一个字段的索引
+  // FieldMeta field_meta_;  ///< 当前实现仅考虑一个字段的索引
+  std::vector<FieldMeta> fields_metas_; // 多列索引的字段，注意这里将会存储实际的FieldMeta对象
 };
 
 /**

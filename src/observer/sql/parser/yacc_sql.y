@@ -112,29 +112,37 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         NULL_VALUE
         LIKE_T
         NOT_LIKE_T
+        AS
 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 // 每次匹配到一个语法规则之后生成结果的类型
 %union {
   ParsedSqlNode *                   sql_node;
-  Value *                           value;
   CompOp                            comp;
-  RelAttrSqlNode *                  rel_attr;
-  std::vector<AttrInfoSqlNode> *    attr_infos;
+
   AttrInfoSqlNode *                 attr_info;
+  std::vector<AttrInfoSqlNode> *    attr_infos;
+
   Expression *                      expression;
   std::vector<Expression *> *       expression_list;
+
+  Value *                           value;
   std::vector<Value> *              value_list;
-  std::vector<RelAttrSqlNode> *     rel_attr_list;
-  std::vector<std::string> *        relation_list;
+
+  RelAttrSqlNode *                  rel_attr_item;
+  std::vector<RelAttrSqlNode> *     attr_list;
+
+  Relation *                        relation_item;
+  std::vector<Relation> *           relation_list;
+
   char *                            string;
   int                               number;
   float                             floats;
   InnerJoinNode *                   join_clause;
   Expression *                      join_conditions;          
   std::vector<InnerJoinNode> *      inner_join_list;
-  OrderDirection               order_direction;
+  OrderDirection                    order_direction;
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
 }
@@ -156,9 +164,15 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
-%type <rel_attr_list>       select_attr
+
+%type <relation_list>       from
 %type <relation_list>       rel_list
-%type <rel_attr_list>       attr_list
+%type <relation_item>       rel_item
+
+%type <attr_list>           select_attr
+%type <attr_list>           attr_list
+%type <rel_attr_item>       rel_attr_item
+
 %type <expression_list>     expression_list
 %type <sql_node>            calc_stmt
 %type <sql_node>            select_stmt     
@@ -496,34 +510,32 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list inner_join_list where order_by
+    SELECT select_attr FROM from inner_join_list where order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
         $$->selection.attributes.swap(*$2);
         delete $2;
       }
-      if ($5 != nullptr) {
-        $$->selection.relations.swap(*$5);
-        delete $5;
+      if ($4 != nullptr) {
+        $$->selection.relations.swap(*$4);
+        delete $4;
       }
-      $$->selection.relations.push_back($4);
       std::reverse($$->selection.relations.begin(), $$->selection.relations.end());   // 为什么这里要反转？因为select_attr的写法是反着的。
-      free($4);
 
-      if ($6 != nullptr) {
-        $$->selection.inner_join_clauses.swap(*$6);
-        delete $6;
+      if ($5 != nullptr) {
+        $$->selection.inner_join_clauses.swap(*$5);
+        delete $5;
       }
       std::reverse($$->selection.inner_join_clauses.begin(), $$->selection.inner_join_clauses.end());   
 
-      if ($7 != nullptr) {
-        $$->selection.conditions = $7;
+      if ($6 != nullptr) {
+        $$->selection.conditions = $6;
       }
 
-      if ($8 != nullptr) {
-        $$->selection.order_by_nodes.swap(*$8);
-        delete $8;
+      if ($7 != nullptr) {
+        $$->selection.order_by_nodes.swap(*$7);
+        delete $7;
       }
       // std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
 
@@ -586,26 +598,7 @@ arithmetic_expr:
     }
     ;
 
-select_attr:
-    '*' {
-      $$ = new std::vector<RelAttrSqlNode>;
-      RelAttrSqlNode attr;
-      attr.relation_name  = "";
-      attr.attribute_name = "*";
-      $$->emplace_back(attr);
-    }
-    | rel_attr attr_list {
-      if ($2 != nullptr) {
-        $$ = $2;
-      } else {
-        $$ = new std::vector<RelAttrSqlNode>;
-      }
-      $$->emplace_back(*$1);
-      delete $1;
-    }
-    ;
-
-rel_attr:
+rel_attr:     // 返回RelAttrSqlNode*
     ID {
       $$ = new RelAttrSqlNode;
       $$->attribute_name = $1;
@@ -620,39 +613,112 @@ rel_attr:
     }
     ;
 
-attr_list:
-    /* empty */
-    {
-      $$ = nullptr;
-    }
-    | COMMA rel_attr attr_list {
-      if ($3 != nullptr) {
-        $$ = $3;
-      } else {
-        $$ = new std::vector<RelAttrSqlNode>;
-      }
+    
+select_attr:
+  rel_attr_item {
+    $$ = new std::vector<RelAttrSqlNode>;
+    $$->emplace_back(*$1);
+    delete $1;
+  }
+  | rel_attr_item attr_list {
+    std::vector<RelAttrSqlNode> *temp = $2;
+    if (temp == nullptr) {
+      temp = new std::vector<RelAttrSqlNode>;
+    } 
+    temp->emplace_back(*$1);
+    $$ = temp;
+    delete $1;
+  }
 
-      $$->emplace_back(*$2);
-      delete $2;
+// 返回std::vector<RelAttrSqlNode> *
+// 支持聚集函数、表达式 
+rel_attr_item:        // 返回RelAttrSqlNode*
+    '*' {  
+      $$ = new RelAttrSqlNode ;
+      $$->relation_name  = "";
+      $$->attribute_name = "*";
+		}
+    | ID DOT '*' {
+      $$ = new RelAttrSqlNode;
+      $$->relation_name = $1;
+      $$->attribute_name = "*";
+    }
+    | add_expr {       
+      $$ = new RelAttrSqlNode;
+      $$->expr = $1;
+    }
+    | add_expr AS ID {   // 只有单列和聚集函数才能取别名
+      $$ = new RelAttrSqlNode;
+      $$->expr = $1;
+      $$->alias = $3;
+    }
+    | add_expr ID {
+      $$ = new RelAttrSqlNode;
+      $$->expr = $1;
+      $$->alias = $2;
     }
     ;
 
-rel_list:
-    /* empty */
+attr_list:      // 返回std::vector<RelAttrSqlNode> *
+    /* empty */ 
     {
       $$ = nullptr;
     }
-    | COMMA ID rel_list {
-      if ($3 != nullptr) {
-        $$ = $3;
-      } else {
-        $$ = new std::vector<std::string>;
-      }
-
-      $$->push_back($2);
-      free($2);
+    | COMMA rel_attr_item attr_list {
+      std::vector<RelAttrSqlNode> *temp = $3;
+      if (temp == nullptr) {
+        temp = new std::vector<RelAttrSqlNode>;
+      } 
+      temp->emplace_back(*$2);
+      $$ = temp;
     }
-    ;
+  	;
+
+from:
+  rel_item 
+  {
+    $$ = new std::vector<Relation>;
+    $$->emplace_back(*$1);
+    delete rel_item;
+  }
+  | rel_item rel_list 
+  {
+    $$ = $2;
+    $$->emplace_back(*$1);
+    delete $1;
+  }
+
+rel_list:     // 返回std::vector<Relation> * 
+  /* empty */ 
+  {
+    $$ = nullptr;
+  }
+  | COMMA rel_item rel_list {	
+    std::vector<Relation> * temp = rel_list;
+    if (temp == nullptr) {
+      temp = new std::vector<Relation>;
+      temp->emplace_back(*$2);
+    }
+    $$ = temp;
+  }
+  
+rel_item:   // 返回 Relation *
+  ID {
+    $$ = new Relation;
+    $$->relation_name = $1;
+  }
+  |ID ID {       
+    $$ = new Relation;
+    $$->relation_name = $1;
+    $$->alias = $2;
+  }
+  |ID AS ID {
+    $$ = new Relation;
+    $$->relation_name = $1;
+    $$->alias = $3;
+  }
+  ;
+    
 
 /**
  *dengshudong添加的语法规则
@@ -762,7 +828,6 @@ where:     // 返回Expression *
     $$ = $2;
   }
   ;
-
 
 condition_list:   // 返回ConjunctionExpr*
     condition {

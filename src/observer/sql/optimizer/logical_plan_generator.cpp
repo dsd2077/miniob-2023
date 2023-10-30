@@ -159,6 +159,74 @@ RC LogicalPlanGenerator::create_plan(
     return rc;
   }
 
+  // 2 process groupby clause and aggrfunc fileds
+  // 2.1 gen sort oper for groupby
+  // SortOperator *sort_oper_for_groupby = nullptr;
+  // if (nullptr != select_stmt->orderby_stmt_for_groupby()) {
+  //   sort_oper_for_groupby = new SortOperator(select_stmt->orderby_stmt_for_groupby());
+  //   sort_oper_for_groupby->add_child(top_op);
+  //   top_op = sort_oper_for_groupby;
+  //   delete_opers.emplace_back(sort_oper_for_groupby);
+  // }
+
+  // 2.2 get aggrfunc_exprs from projects
+  std::vector<AggrFuncExpression *> aggr_exprs;
+  for (auto project : select_stmt->projects()) {
+    AggrFuncExpression::get_aggrfuncexprs(project, aggr_exprs);
+  }
+
+  // 2.3 get normal field_exprs from projects
+  std::vector<FieldExpr *> field_exprs;
+  for (auto project : select_stmt->projects()) {
+    FieldExpr::get_fieldexprs_without_aggrfunc(project, field_exprs);
+  }
+
+  // 2.4 get aggrfunc_exprs field_exprs from havings
+  // HavingStmt *having_stmt = select_stmt->having_stmt();
+  // if (nullptr != having_stmt) {
+  //   // TODO(wbj) unique
+  //   for (auto hf : having_stmt->filter_units()) {
+  //     AggrFuncExpression::get_aggrfuncexprs(hf->left(), aggr_exprs);
+  //     AggrFuncExpression::get_aggrfuncexprs(hf->right(), aggr_exprs);
+  //     FieldExpr::get_fieldexprs_without_aggrfunc(hf->left(), field_exprs);
+  //     FieldExpr::get_fieldexprs_without_aggrfunc(hf->right(), field_exprs);
+  //   }
+  // }
+
+  // GroupByStmt *groupby_stmt = select_stmt->groupby_stmt();
+  // 2.5 do check 
+  // if (!aggr_exprs.empty() && !field_exprs.empty()) {
+  //   if (nullptr == groupby_stmt) {
+  //     return RC::SQL_SYNTAX;
+  //   }
+  //   for (auto field_expr : field_exprs) {
+  //     bool in_groupby = false;
+  //     for (auto groupby_unit : groupby_stmt->groupby_units()) {
+  //       if (field_expr->in_expression(groupby_unit->expr())) {
+  //         in_groupby = true;
+  //         break;
+  //       }
+  //     }
+  //     if (!in_groupby) {
+  //       return RC::SQL_SYNTAX;
+  //     }
+  //   }
+  // }
+
+  // 2.6 gen groupby oper
+  GroupByStmt *empty_groupby_stmt = nullptr;  // new a empty groupby stmt for no groupby fields
+  GroupByOperator *group_oper = nullptr;
+  if (0 != aggr_exprs.size()) {
+    group_oper = new GroupByOperator(groupby_stmt, aggr_exprs, field_exprs);
+    if (nullptr == select_stmt->groupby_stmt()) {
+      empty_groupby_stmt = new GroupByStmt();
+      group_oper->set_groupby_stmt(empty_groupby_stmt);
+    }
+    group_oper->add_child(top_op);
+    top_op = group_oper;
+    delete_opers.emplace_back(group_oper);
+  }
+
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
   project_oper->add_child(std::move(top_oper));
 

@@ -71,6 +71,31 @@ RC FieldExpr::init(const std::vector<Table *> &tables, const std::unordered_map<
   }
 }
 
+void FieldExpr::get_fieldexprs_without_aggrfunc(Expression *expr, std::vector<FieldExpr *> &field_exprs)
+{
+  switch (expr->type()) {
+    case ExprType::FIELD: {
+      FieldExpr *exp = dynamic_cast<FieldExpr *>(expr);
+      field_exprs.emplace_back(exp);
+    break;
+    }
+    case ExprType::AGGRFUNC: {
+      // const AggrFuncExpression *afexp = (const AggrFuncExpression *)expr;
+      // get_fieldexprs_without_aggrfunc(&afexp->fieldexpr(), field_exprs);
+      break;
+    }
+    case ExprType::ARITHMETIC: {
+      ArithmeticExpr *exp = dynamic_cast<ArithmeticExpr *>(expr);
+      get_fieldexprs_without_aggrfunc(exp->left().get(), field_exprs);
+      get_fieldexprs_without_aggrfunc(exp->left().get(), field_exprs);
+      break;
+    }
+    default:
+      break;
+  }
+  return;
+}
+
 RC ValueExpr::get_value(const Tuple &tuple, Value &value) const
 {
   value = value_;
@@ -632,4 +657,39 @@ RC SubQueryExpression::close_sub_query() const
 {
   assert(nullptr != physical_oper_);
   return physical_oper_->close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// AggrFuncType
+
+RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db = nullptr)
+{
+  field_->init(tables, table_map, db);
+}
+
+RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 
+{
+  Field tmp_field(field_->field());
+  tmp_field.set_aggr(type_);
+  return tuple.find_cell(tmp_field, cell);
+}
+
+void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFuncExpression *> &aggrfunc_exprs) 
+{
+  switch (expr->type()) {
+    case ExprType::AGGRFUNC: {
+      AggrFuncExpression *expr = dynamic_cast<AggrFuncExpression *>(expr);
+      aggrfunc_exprs.emplace_back(const_cast<AggrFuncExpression *>(expr));
+      break;
+    }
+    case ExprType::ARITHMETIC: {
+      ArithmeticExpr *expr = dynamic_cast<ArithmeticExpr *>(expr);
+      get_aggrfuncexprs(expr->left().get(), aggrfunc_exprs);
+      get_aggrfuncexprs(expr->right().get(), aggrfunc_exprs);
+      break;
+    }
+    default:
+      break;
+  }
+  return;
 }

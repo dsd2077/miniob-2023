@@ -35,8 +35,20 @@ class Expression;
  */
 struct RelAttrSqlNode
 {
-  std::string relation_name;   ///< relation name (may be NULL) 表名
-  std::string attribute_name;  ///< attribute name              属性名
+  std::string relation_name = "";   ///< relation name (may be NULL) 表名
+  std::string attribute_name = "";  ///< attribute name              属性名
+  Expression *  expr = nullptr;          /// 聚集函数 
+  std::string alias = "";
+};
+
+struct Relation {
+  std::string relation_name;
+  std::string alias;
+};
+
+struct  RelAttr{
+  std::string relation_name;   // relation name (may be NULL) 表名
+  std::string attribute_name;  // attribute name              属性名
 };
 
 // class Expression;
@@ -96,7 +108,7 @@ struct OrderByNode {
 };
 
 struct InnerJoinNode {
-  std::string       relation_name;
+  Relation          relation_name;
   Expression *      conditions = nullptr;    ///< 查询条件，使用AND串联起来多个条件 ConjunctionExpr
 };
 
@@ -113,10 +125,11 @@ struct InnerJoinNode {
 struct SelectSqlNode
 {
   std::vector<RelAttrSqlNode>     attributes;    ///< attributes in select clause
-  std::vector<std::string>        relations;     ///< 查询的表
+  std::vector<Relation>           relations;     ///< 查询的表
   Expression *                    conditions = nullptr;     ///< 查询条件，使用AND串联起来多个条件
   std::vector<InnerJoinNode>      inner_join_clauses;
   std::vector<OrderByNode>        order_by_nodes;
+  std::vector<RelAttr>            group_by;
 };
 
 /**

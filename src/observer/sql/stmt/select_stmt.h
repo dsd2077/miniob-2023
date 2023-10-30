@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 #include <memory>
 
 #include "common/rc.h"
+#include "sql/expr/expression.h"
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
 #include "storage/field/field.h"
@@ -26,6 +27,7 @@ See the Mulan PSL v2 for more details. */
 class FieldMeta;
 class FilterStmt;
 class OrderByStmt;
+class GroupByStmt;
 class Db;
 class Table;
 
@@ -52,19 +54,22 @@ public:
   const std::vector<Table *> &tables() const { return tables_; }
   const std::vector<Field> &  query_fields() const { return query_fields_; }
 
+  const std::vector<Expression *> &projects() const { return query_fields_; }
+
   OrderByStmt *orderby_stmt() const { return orderby_stmt_; }
+  GroupByStmt *groupby_stmt() const { return groupby_stmt_; }
   FilterStmt *filter_stmt() const { return filter_stmt_; }
   FilterStmt *inner_join_filter_stmt() const { return inner_join_filter_stmt_; }
 
 private:
-  std::vector<Field> query_fields_;     // execute_stage用到了这个数据类型，所以难得改成Expression了
+  std::vector<Expression *> query_fields_;     
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;     
   OrderByStmt *orderby_stmt_ = nullptr;
   FilterStmt *inner_join_filter_stmt_ = nullptr;
+  GroupByStmt *groupby_stmt_ = nullptr;
 
   // TODO:
   // HavingStmt *having_stmt_ = nullptr;
   // OrderByStmt *orderby_stmt_for_groupby_ = nullptr;
-  // GroupByStmt *groupby_stmt_ = nullptr;
 };

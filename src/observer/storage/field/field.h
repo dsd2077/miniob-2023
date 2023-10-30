@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "storage/table/table.h"
 #include "storage/field/field_meta.h"
+#include <cassert>
 
 /**
  * @brief 字段
@@ -52,6 +53,12 @@ public:
     return field_->name();
   }
 
+  void set_aggr(AggrFuncType type)
+  {
+    assert(type >= 0 && type < AggrFuncType::AGGR_FUNC_TYPE_NUM);
+    this->aggr_type_ = type;
+  }
+
   void set_table(const Table *table)
   {
     this->table_ = table;
@@ -69,4 +76,6 @@ public:
 private:
   const Table *table_ = nullptr;
   const FieldMeta *field_ = nullptr;
+
+  AggrFuncType aggr_type_ = AggrFuncType::AGGR_FUNC_TYPE_NUM;
 };

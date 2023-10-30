@@ -111,12 +111,13 @@ extern int yydebug;
     NULL_VALUE = 312,              /* NULL_VALUE  */
     LIKE_T = 313,                  /* LIKE_T  */
     NOT_LIKE_T = 314,              /* NOT_LIKE_T  */
-    NUMBER = 315,                  /* NUMBER  */
-    FLOAT = 316,                   /* FLOAT  */
-    ID = 317,                      /* ID  */
-    DATE = 318,                    /* DATE  */
-    SSS = 319,                     /* SSS  */
-    UMINUS = 320                   /* UMINUS  */
+    AS = 315,                      /* AS  */
+    NUMBER = 316,                  /* NUMBER  */
+    FLOAT = 317,                   /* FLOAT  */
+    ID = 318,                      /* ID  */
+    DATE = 319,                    /* DATE  */
+    SSS = 320,                     /* SSS  */
+    UMINUS = 321                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -125,30 +126,37 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 119 "yacc_sql.y"
+#line 120 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
-  Value *                           value;
   CompOp                            comp;
-  RelAttrSqlNode *                  rel_attr;
-  std::vector<AttrInfoSqlNode> *    attr_infos;
+
   AttrInfoSqlNode *                 attr_info;
+  std::vector<AttrInfoSqlNode> *    attr_infos;
+
   Expression *                      expression;
   std::vector<Expression *> *       expression_list;
+
+  Value *                           value;
   std::vector<Value> *              value_list;
-  std::vector<RelAttrSqlNode> *     rel_attr_list;
-  std::vector<std::string> *        relation_list;
+
+  RelAttrSqlNode *                  rel_attr_item;
+  std::vector<RelAttrSqlNode> *     attr_list;
+
+  Relation *                        relation_item;
+  std::vector<Relation> *           relation_list;
+
   char *                            string;
   int                               number;
   float                             floats;
   InnerJoinNode *                   join_clause;
   Expression *                      join_conditions;          
   std::vector<InnerJoinNode> *      inner_join_list;
-  OrderDirection               order_direction;
+  OrderDirection                    order_direction;
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
 
-#line 152 "yacc_sql.hpp"
+#line 160 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

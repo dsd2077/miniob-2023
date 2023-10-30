@@ -120,6 +120,7 @@ IN                                      RETURN_TOKEN(IN);
 EXISTS                                  RETURN_TOKEN(EXISTS);
 IS                                      RETURN_TOKEN(IS);
 NULL                                    RETURN_TOKEN(NULL_VALUE);
+AS                                      RETURN_TOKEN(AS); 
 
 
 INT                                     RETURN_TOKEN(INT_T);    

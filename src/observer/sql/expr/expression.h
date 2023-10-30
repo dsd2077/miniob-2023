@@ -113,6 +113,7 @@ public:
   {}
 
   RC init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db=nullptr) override;
+  static void get_fieldexprs_without_aggrfunc(Expression *expr, std::vector<FieldExpr *> &field_exprs);
 
   virtual ~FieldExpr() = default;
 
@@ -124,6 +125,8 @@ public:
   const Field &field() const { return field_; }
 
   const char *table_name() const { return field_.table_name(); }
+
+  const Table *table() const { return field_.table(); }
 
   const char *field_name() const { return field_.field_name(); }
 
@@ -449,5 +452,63 @@ public:
 
 private:
   std::vector<Value> values_;
+};
+
+
+class AggrFuncExpression : public Expression {
+public:
+  AggrFuncExpression() = default;
+  AggrFuncExpression(AggrFuncType type, const FieldExpr *field) : type_(type), field_(field)
+  {}
+  AggrFuncExpression(AggrFuncType type, const FieldExpr *field, bool with_brace) : AggrFuncExpression(type, field)
+  {
+    // if (with_brace) {
+    //   set_with_brace();
+    // }
+  }
+
+  virtual ~AggrFuncExpression() = default;
+
+  void set_param_value(ValueExpr *value) { value_ = value; }
+
+  bool is_param_value() const { return nullptr != value_; }
+
+  const ValueExpr *get_param_value() const
+  {
+    assert(nullptr != value_);
+    return value_;
+  }
+
+  ExprType type() const override { return ExprType::AGGRFUNC; }
+
+  const Field &field() const { return field_->field(); }
+
+  const FieldExpr &fieldexpr() const { return *field_; }
+
+  const Table *table() const { return field_->table(); }
+
+  const char *table_name() const { return field_->table_name(); }
+
+  const char *field_name() const { return field_->field_name(); }
+
+  RC get_value(const Tuple &tuple, Value &cell) const override;
+
+  std::string get_func_name() const;
+
+  AttrType get_return_type() const;
+
+  AggrFuncType get_aggr_func_type() const
+  {
+    return type_;
+  }
+
+  RC init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db=nullptr) override;
+
+  static void get_aggrfuncexprs(Expression *expr, std::vector<AggrFuncExpression *> &aggrfunc_exprs);
+
+private:
+  AggrFuncType type_;
+  FieldExpr *field_ = nullptr;  // don't own this. keep const.
+  ValueExpr *value_ = nullptr;  // for count(1) count(*) count("xxx") output
 };
 

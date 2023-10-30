@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/stmt/select_stmt.h"
+#include "sql/parser/parse_defs.h"
 #include "sql/stmt/filter_stmt.h"
 #include "sql/stmt/order_by_stmt.h"
 #include "common/log/log.h"
@@ -29,12 +30,14 @@ SelectStmt::~SelectStmt()
   }
 }
 
-static void wildcard_fields(Table *table, std::vector<Field> &field_metas)
+static void wildcard_fields(Table *table, std::vector<Expression*> &field_metas)
 {
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num();
   for (int i = table_meta.sys_field_num(); i < field_num; i++) {
-    field_metas.push_back(Field(table, table_meta.field(i)));
+    if (table_meta.field(i)->visible()) {
+      field_metas.emplace_back(new FieldExpr(table, table_meta.field(i)));
+    }
   }
 }
 
@@ -48,9 +51,10 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
   // collect tables in `from` statement
   std::vector<Table *> tables;
   std::unordered_map<std::string, Table *> table_map;
+  std::unordered_map<Table *, std::string> alias_map;
 
-  std::vector<std::string>relations(select_sql.relations);
-  // 存在inner join,需要将inner join表拿出来
+  std::vector<Relation>relations(select_sql.relations);
+  // 存在inner join,将inner join表拿出来
   if (!select_sql.inner_join_clauses.empty()) {
     for (auto &inner_join_node : select_sql.inner_join_clauses) {
       relations.emplace_back(inner_join_node.relation_name);
@@ -58,7 +62,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
   }
 
   for (size_t i = 0; i < relations.size(); i++) {
-    const char *table_name = relations[i].c_str();
+    const char *table_name = relations[i].relation_name.c_str();
+    const char *alias_name = select_sql.relations[i].alias.c_str();
     if (nullptr == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;
@@ -69,13 +74,23 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
       LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
+    // duplicate alias
+    if (nullptr != alias_name) {
+      if (0 != table_map.count(std::string(alias_name))) {
+        return RC::SQL_SYNTAX;
+      }
+    }
 
     tables.push_back(table);
     table_map.insert(std::pair<std::string, Table *>(table_name, table));
+    if (alias_name != nullptr) {
+      table_map.insert(std::pair<std::string, Table *>(alias_name, table));
+      alias_map.insert(std::pair<Table *, std::string>(table, alias_name));
+    }
   }
 
   // collect query fields in `select` statement
-  std::vector<Field> query_fields;
+  std::vector<Expression *> query_fields;
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
     const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
     // select * from 
@@ -83,54 +98,70 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
         0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
       for (Table *table : tables) {     
-        wildcard_fields(table, query_fields);
-      }
-    } else if (!common::is_blank(relation_attr.relation_name.c_str())) {
-      const char *table_name = relation_attr.relation_name.c_str();
-      const char *field_name = relation_attr.attribute_name.c_str();
-      // select *.* from 为啥会有这种情况？
-      if (0 == strcmp(table_name, "*")) {
-        if (0 != strcmp(field_name, "*")) {
-          LOG_WARN("invalid field name while table is *. attr=%s", field_name);
-          return RC::SCHEMA_FIELD_MISSING;
+        // wildcard_fields(table, query_fields);
+        auto it2 = alias_map.find(table);
+        std::string table_name(table->name());
+        if (it2 != alias_map.end()) {
+          table_name = it2->second;
         }
+        const TableMeta &table_meta = table->table_meta();
+        const int field_num = table_meta.field_num();
+        for (int i = table_meta.sys_field_num(); i < field_num; i++) {
+          if (table_meta.field(i)->visible()) {
+            FieldExpr *tmp_field = new FieldExpr(table, table_meta.field(i));
+            std::string alias;
+            if (tables.size() == 1) {
+              alias = std::string(table_meta.field(i)->name());
+            } else {
+              alias = std::string(table_name) + '.' + std::string(table_meta.field(i)->name());
+            }
+            tmp_field->set_name(alias);
+            query_fields.emplace_back(tmp_field);
+          }
+        }
+      }
+    // select tablename.* from 
+    } else if (!common::is_blank(relation_attr.relation_name.c_str()) && 
+              0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {
+      const char *table_name = relation_attr.relation_name.c_str();
+      if (0 == strcmp(table_name, "*")) {   // *.*
         for (Table *table : tables) {
           wildcard_fields(table, query_fields);
         }
-      } else { // select table.attr from
+      } else {
         auto iter = table_map.find(table_name);
         if (iter == table_map.end()) {
           LOG_WARN("no such table in from list: %s", table_name);
           return RC::SCHEMA_FIELD_MISSING;
         }
-
         Table *table = iter->second;
-        if (0 == strcmp(field_name, "*")) {   // select tablename.* from
-          wildcard_fields(table, query_fields);
-        } else {
-          const FieldMeta *field_meta = table->table_meta().field(field_name);
-          if (nullptr == field_meta) {
-            LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
-            return RC::SCHEMA_FIELD_MISSING;
+        const TableMeta &table_meta = table->table_meta();
+        const int field_num = table_meta.field_num();
+        for (int i = table_meta.sys_field_num(); i < field_num; i++) {
+          if (table_meta.field(i)->visible()) {
+            FieldExpr *tmp_field = new FieldExpr(table, table_meta.field(i));
+            std::string alias;
+            if (tables.size() == 1) {
+              alias = std::string(table_meta.field(i)->name());
+            } else {
+              alias = std::string(table_name) + '.' + std::string(table_meta.field(i)->name());
+            }
+            tmp_field->set_name(alias);
+            query_fields.emplace_back(tmp_field);
           }
-
-          query_fields.push_back(Field(table, field_meta));
         }
       }
-    } else {    // select attr from...
-      if (tables.size() != 1) {     // 只有一张表时才能直接取字段，否则必须通过tablename.attr
-        LOG_WARN("invalid. I do not know the attr's table. attr=%s", relation_attr.attribute_name.c_str());
-        return RC::SCHEMA_FIELD_MISSING;
+    } else {    // expression
+      Expression *expr = relation_attr.expr;
+      // RC rc = Expression::create_expression(relation_attr.expr, table_map, tables, res_project);
+      RC rc = expr->init(tables, table_map, db);      
+      if (rc != RC::SUCCESS) {
+        return rc;
       }
-
-      Table *table = tables[0];
-      const FieldMeta *field_meta = table->table_meta().field(relation_attr.attribute_name.c_str());
-      if (nullptr == field_meta) {
-        LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), relation_attr.attribute_name.c_str());
-        return RC::SCHEMA_FIELD_MISSING;
+      if (relation_attr.alias != "") {
+        expr->set_name(relation_attr.alias);
       }
-
-      query_fields.push_back(Field(table, field_meta));
+      query_fields.emplace_back(expr);
     }
   }
 
@@ -154,7 +185,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
   for (int i = 0; i < select_sql.inner_join_clauses.size(); i++) {
     auto inner_join_node = select_sql.inner_join_clauses[i];
     if (inner_join_node.conditions == nullptr) continue;
-    auto ty = inner_join_node.conditions->type();     // 不是空指针，又拿不到type?
+    auto ty = inner_join_node.conditions->type();     
     ConjunctionExpr *temp = dynamic_cast<ConjunctionExpr *>(inner_join_node.conditions);
     assert(temp != nullptr);
     if (inner_join_conditions == nullptr) {

@@ -94,6 +94,7 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
 
   Index *index = nullptr;
   ValueExpr *value_expr = nullptr;
+  std::vector<ValueExpr> value_exprs;
   std::vector<const char *> expr_fields; // 记录表达式中所有的fields 
   for (auto &expr : predicates) {
     if (expr->type() == ExprType::COMPARISON) {
@@ -115,10 +116,12 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
         ASSERT(right_expr->type() == ExprType::VALUE, "right expr should be a value expr while left is field expr");
         field_expr = static_cast<FieldExpr *>(left_expr.get());
         value_expr = static_cast<ValueExpr *>(right_expr.get());
+        value_exprs.emplace_back(*value_expr);
       } else if (right_expr->type() == ExprType::FIELD) {
         ASSERT(left_expr->type() == ExprType::VALUE, "left expr should be a value expr while right is a field expr");
         field_expr = static_cast<FieldExpr *>(right_expr.get());
         value_expr = static_cast<ValueExpr *>(left_expr.get());
+        value_exprs.emplace_back(*value_expr);
       }
 
       if (field_expr == nullptr) {
@@ -139,11 +142,16 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
   if (index != nullptr) {
     ASSERT(value_expr != nullptr, "got an index but value expr is null ?");
 
-    const Value &value = value_expr->get_value();
+    // const Value &value = value_expr->get_value();
+    std::vector<Value> values;
+    for(int i = 0 ; i < value_exprs.size() ; i ++ ) {
+      values.emplace_back(value_exprs[i].get_value());
+    }
+    std::reverse(values.begin(), values.end());
     IndexScanPhysicalOperator *index_scan_oper = new IndexScanPhysicalOperator(
           table, index, table_get_oper.readonly(), 
-          &value, true /*left_inclusive*/, 
-          &value, true /*right_inclusive*/);
+          values, true /*left_inclusive*/, 
+          values, true /*right_inclusive*/);
           
     index_scan_oper->set_predicates(std::move(predicates));
     oper = unique_ptr<PhysicalOperator>(index_scan_oper);

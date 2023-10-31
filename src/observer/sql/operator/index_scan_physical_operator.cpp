@@ -34,22 +34,53 @@ IndexScanPhysicalOperator::IndexScanPhysicalOperator(
   }
 }
 
+IndexScanPhysicalOperator::IndexScanPhysicalOperator(
+      Table *table, Index *index, bool readonly,
+      std::vector<Value> &left_values, bool left_inclusive,
+      std::vector<Value> &right_values, bool right_inclusive)
+      : table_(table),
+        index_(index),
+        readonly_(readonly),
+        left_inclusive_(left_inclusive),
+        right_inclusive_(right_inclusive)
+{
+  if(left_values.size() > 0) {
+    for(int i = 0 ; i < left_values.size() ; i ++ ) {
+      left_values_.emplace_back(left_values[i]);
+    }
+  }
+  if(right_values.size() > 0) {
+    for(int i = 0 ; i < right_values.size() ; i ++ ) {
+      right_values_.emplace_back(right_values[i]);
+    }
+  }
+}
+
 RC IndexScanPhysicalOperator::open(Trx *trx)
 {
   if (nullptr == table_ || nullptr == index_) {
     return RC::INTERNAL;
   }
 
-  IndexScanner *index_scanner = index_->create_scanner(left_value_.data(),
-      left_value_.length(),
+  IndexScanner *index_scanner = index_->create_scanner_multi_cols(left_values_,
       left_inclusive_,
-      right_value_.data(),
-      right_value_.length(),
+      right_values_,
       right_inclusive_);
-  if (nullptr == index_scanner) {
+  if(nullptr == index_scanner) {
     LOG_WARN("failed to create index scanner");
     return RC::INTERNAL;
   }
+
+  // IndexScanner *index_scanner = index_->create_scanner(left_value_.data(),
+  //     left_value_.length(),
+  //     left_inclusive_,
+  //     right_value_.data(),
+  //     right_value_.length(),
+  //     right_inclusive_);
+  // if (nullptr == index_scanner) {
+  //   LOG_WARN("failed to create index scanner");
+  //   return RC::INTERNAL;
+  // }
 
   record_handler_ = table_->record_handler();
   if (nullptr == record_handler_) {

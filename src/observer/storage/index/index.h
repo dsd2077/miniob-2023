@@ -79,6 +79,9 @@ public:
   virtual IndexScanner *create_scanner(const char *left_key, int left_len, bool left_inclusive, const char *right_key,
       int right_len, bool right_inclusive) = 0;
 
+  virtual IndexScanner *create_scanner_multi_cols(std::vector<Value> &left_key, bool left_inclusive, std::vector<Value> &right_key,
+      bool right_inclusive) = 0;
+
   /**
    * @brief 同步索引数据到磁盘
    * 

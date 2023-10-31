@@ -153,6 +153,43 @@ IndexScanner *BplusTreeIndex::create_scanner(
   return index_scanner;
 }
 
+IndexScanner *BplusTreeIndex::create_scanner_multi_cols(
+      std::vector<Value> &left_key, bool left_inclusive, std::vector<Value> &right_key,
+      bool right_inclusive)
+{
+  BplusTreeIndexScanner *index_scanner = new BplusTreeIndexScanner(index_handler_);
+  int sz = 0;
+  for(int i = 0 ; i < left_key.size() ; i ++ ) {
+    sz += left_key[i].length();
+  }
+  char *left_key_buf = new (std::nothrow) char[sz];
+  sz = 0;
+  for(int i = 0 ; i < right_key.size() ; i ++ ) {
+    sz += right_key[i].length();
+  }
+  char *right_key_buf = new (std::nothrow) char[sz];
+
+  // 复制内容，构造key
+  int offset = 0;
+  for(int i = 0 ; i < left_key.size() ; i ++ ) {
+    memcpy(left_key_buf + offset, left_key[i].data(), left_key[i].length());
+    offset += left_key[i].length();
+  }
+  offset = 0;
+  for(int i = 0 ; i < right_key.size() ; i ++ ) {
+    memcpy(right_key_buf + offset, right_key[i].data(), right_key[i].length());
+    offset += right_key[i].length();
+  }
+
+  RC rc = index_scanner->open(left_key_buf, sz, left_inclusive, right_key_buf, sz, right_inclusive);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open index scanner. rc=%d:%s", rc, strrc(rc));
+    delete index_scanner;
+    return nullptr;
+  }
+  return index_scanner;
+}
+
 RC BplusTreeIndex::sync()
 {
   return index_handler_.sync();

@@ -187,7 +187,6 @@ public:
       return result;
     }
 
-    int key_length = 0;
     // 如果key完全相等，则比较rid（真的合适吗，为什么要比较rid呢？因为这个b+树写得很不成功，节点内在获取key实际上获取了整个entry的内容）
     const RID *rid1 = (const RID *)(v1 + attr_length);
     const RID *rid2 = (const RID *)(v2 + attr_length);

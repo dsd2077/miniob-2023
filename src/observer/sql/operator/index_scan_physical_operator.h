@@ -29,6 +29,11 @@ public:
       const Value *left_value, bool left_inclusive,
       const Value *right_value, bool right_inclusive);
 
+  // 重载：联合索引
+  IndexScanPhysicalOperator(Table *table, Index *index, bool readonly,
+      std::vector<Value> &left_values, bool left_inclusive,
+      std::vector<Value> &right_values, bool right_inclusive);
+
   virtual ~IndexScanPhysicalOperator() = default;
 
   PhysicalOperatorType type() const override
@@ -64,6 +69,11 @@ private:
 
   Value left_value_;
   Value right_value_;
+  std::vector<Value> left_values_;
+  std::vector<Value> right_values_;
+  // Value left_values_[256];
+  // Value right_values_[256];
+  // int values_num_;  // 条件数量
   bool left_inclusive_ = false;
   bool right_inclusive_ = false;
 

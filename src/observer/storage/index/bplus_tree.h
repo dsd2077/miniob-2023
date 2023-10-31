@@ -182,16 +182,16 @@ public:
   int operator()(const char *v1, const char *v2) const
   {
     int result = attrs_comparator_(v1, v2);
-    return result;
-    // if(result != 0) {
-    //   return result;
-    // }
+    // return result;
+    if(result != 0) {
+      return result;
+    }
 
-    // int key_length = 0;
-    // // 如果key完全相等，则比较rid（真的合适吗，为什么要比较rid呢？因为这个b+树写得很不成功，节点内在获取key实际上获取了整个entry的内容）
-    // const RID *rid1 = (const RID *)(v1 + attr_length);
-    // const RID *rid2 = (const RID *)(v2 + attr_length);
-    // return RID::compare(rid1, rid2);
+    int key_length = 0;
+    // 如果key完全相等，则比较rid（真的合适吗，为什么要比较rid呢？因为这个b+树写得很不成功，节点内在获取key实际上获取了整个entry的内容）
+    const RID *rid1 = (const RID *)(v1 + attr_length);
+    const RID *rid2 = (const RID *)(v2 + attr_length);
+    return RID::compare(rid1, rid2);
   }
 
 private:
@@ -307,7 +307,6 @@ public:
           ASSERT(false, "unknown attr type. %d", attrs_lengths_[i]);
         }
       }
-      res += "\n";
     }
     return res;
   }
@@ -326,7 +325,7 @@ class KeyPrinter
 public:
 
   // 重载：写入key所有的type和length
-  void init(std::vector<AttrType> &types, std::vector<int> lengths)
+  void init(std::vector<AttrType> &types, std::vector<int> &lengths)
   {
     attrs_printer_.init(types, lengths);
   }
@@ -371,10 +370,15 @@ struct IndexFileHeader
   // int32_t attr_length;        ///< 键值的长度
   // int32_t key_length;         ///< attr length + sizeof(RID)
   // AttrType attr_type;         ///< 键值的类型
-  std::vector<AttrType> attr_type_list; // 当节点中的列有多个时，使用这个属性
-  std::vector<int> attr_lengths;   // 每个attr_type对应的长度
+  // std::vector<AttrType> attr_type_list; // 当节点中的列有多个时，使用这个属性
+  // std::vector<int> attr_lengths;   // 每个attr_type对应的长度
   // int32_t attr_length;
   // int32_t key_length;
+
+  AttrType attrs[256];  // 先默认设置最多256列联合，不能直接用vector，因为那只是一个
+  int attr_lens[256];
+  int attr_offsets[256];  // 每个字段相对于记录头的偏移量
+  int attr_num; // 属性数量
 
   const std::string to_string()
   {
@@ -642,6 +646,7 @@ public:
   RC create(const char *file_name,
             std::vector<AttrType> attrs_types,
             std::vector<int> attrs_lengths,
+            std::vector<int> attrs_offsets,
             int internal_max_size = -1,
             int leaf_max_size = -1);
 
@@ -741,7 +746,8 @@ protected:
 
 private:
   common::MemPoolItem::unique_ptr make_key(const char *user_key, const RID &rid);
-  void free_key(char *key);
+  common::MemPoolItem::unique_ptr make_key_for_select(const char *user_key, const RID &rid);  // 对select的字段进行处理
+  // void free_key(char *key);
 
 protected:
   DiskBufferPool *disk_buffer_pool_ = nullptr;

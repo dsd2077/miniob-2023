@@ -35,11 +35,13 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, st
 
   std::vector<AttrType> attrs;
   std::vector<int> attrs_lengths;
+  std::vector<int> attrs_offsets;
   for(int i = 0 ; i < field_meta.size() ; i ++ ) {
     attrs.emplace_back(field_meta[i].type());
     attrs_lengths.emplace_back(field_meta[i].len());
+    attrs_offsets.emplace_back(field_meta[i].offset());
   }
-  RC rc = index_handler_.create(file_name, attrs, attrs_lengths);  // 这里真正地创建索引文件，这里调用的是B+树句柄的create函数
+  RC rc = index_handler_.create(file_name, attrs, attrs_lengths, attrs_offsets);  // 这里真正地创建索引文件，这里调用的是B+树句柄的create函数
   if (RC::SUCCESS != rc) {
     LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, rc:%s",
         file_name,

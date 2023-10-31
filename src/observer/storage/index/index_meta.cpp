@@ -70,6 +70,8 @@ RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, I
 {
   const Json::Value &name_value = json_value[FIELD_NAME];
   const Json::Value &field_value = json_value[FIELD_FIELD_NAME];
+  std::cout << "index name: " << name_value.asCString() << std::endl;
+  std::cout << "fields : " << field_value.asCString() << std::endl;
   if (!name_value.isString()) {
     LOG_ERROR("Index name is not a string. json value=%s", name_value.toStyledString().c_str());
     return RC::INTERNAL;
@@ -82,24 +84,33 @@ RC IndexMeta::from_json(const TableMeta &table, const Json::Value &json_value, I
     return RC::INTERNAL;
   }
 
-  const char *fields_names_str = field_value.toStyledString().c_str();
+  const char *fields_names_str = field_value.asCString();
   int len = strlen(fields_names_str);
+  std::cout << "len : " << len << std::endl;
+  std::cout << fields_names_str << std::endl;
   std::string field_name = "";
   std::vector<std::string> fields_names;
   std::vector<FieldMeta> fields_metas;
   for(int i = 0 ; i < len ; i ++ ) {
     if(fields_names_str[i] == ',') {
       fields_names.emplace_back(field_name);
+      // std::cout << field_name << std::endl;
       field_name = "";
+    }else {
+      field_name += fields_names_str[i];
     }
-    field_name += fields_names_str[i];
   }
+  fields_names.emplace_back(field_name);
 
   table.fields_by_attrs(fields_metas, fields_names);  // 找出字段元信息
   // const FieldMeta *field = table.field(field_value.asCString());
+  std::cout << "table " << table.name() << " fields:" <<std::endl;
+  for(int i = 0 ; i < fields_metas.size() ; i ++ ) {
+    std::cout << fields_metas[i].name() << std::endl;
+  }
   if (fields_metas.size() == 0 || fields_metas.size() < fields_names.size()) {
     // LOG_ERROR("Deserialize index [%s]: no such field: %s", name_value.asCString(), field_value.asCString());
-    LOG_ERROR("Deserialize index [%s]: fields lack.");
+    LOG_ERROR("Deserialize index [%s]: fields lack.", name_value.asCString());
     return RC::SCHEMA_FIELD_MISSING;
   }
 

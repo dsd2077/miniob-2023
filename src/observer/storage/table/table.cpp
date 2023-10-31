@@ -279,13 +279,13 @@ RC Table::get_record(const RID &rid, Record &record)
 RC Table::recover_insert_record(Record &record)
 {
   RC rc = RC::SUCCESS;
-  rc = record_handler_->recover_insert_record(record.data(), table_meta_.record_size(), record.rid());
+  rc = record_handler_->recover_insert_record(record.data(), table_meta_.record_size(), record.rid());  // 这里向table page写入数据
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Insert record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
     return rc;
   }
 
-  rc = insert_entry_of_indexes(record.data(), record.rid());
+  rc = insert_entry_of_indexes(record.data(), record.rid());  // 这里向index page写入数据(key, rid)
   if (rc != RC::SUCCESS) { // 可能出现了键值重复
     RC rc2 = delete_entry_of_indexes(record.data(), record.rid(), false/*error_on_not_exists*/);
     if (rc2 != RC::SUCCESS) {
@@ -347,7 +347,7 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
     memcpy(record_data + field->offset(), value.data(), copy_len);
   }
 
-  record.set_data_owner(record_data, record_size);
+  record.set_data_owner(record_data, record_size);  // 到这里将会把insert的值写入record对象
   return RC::SUCCESS;
 }
 
@@ -534,7 +534,8 @@ RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;
   for (Index *index : indexes_) {
-    rc = index->insert_entry(record, &rid);
+    std::cout << "record " << record << std::endl;
+    rc = index->insert_entry(record, &rid); // 这里record是一整条记录，需要转变为index所需的列
     if (rc != RC::SUCCESS) {
       break;
     }
@@ -582,6 +583,16 @@ Index *Table::find_index_by_field(const char *field_name) const
   const TableMeta &table_meta = this->table_meta();
   const IndexMeta *index_meta = table_meta.find_index_by_field(field_name);
   if (index_meta != nullptr) {
+    return this->find_index(index_meta->name());
+  }
+  return nullptr;
+}
+
+Index *Table::find_index_by_fields(std::vector<const char *> &fields) const
+{
+  const TableMeta &table_meta = this->table_meta();
+  const IndexMeta *index_meta = table_meta.find_index_by_fields(fields);
+  if(index_meta != nullptr) {
     return this->find_index(index_meta->name());
   }
   return nullptr;

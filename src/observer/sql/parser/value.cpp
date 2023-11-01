@@ -395,7 +395,5 @@ const Value Value::div(const Value &left, const Value &right)
     result_cell.set_type(FLOATS);
     result_cell.set_float(result);
   }
-  free(tmp_left);
-  free(tmp_right);
   return result_cell;
 }

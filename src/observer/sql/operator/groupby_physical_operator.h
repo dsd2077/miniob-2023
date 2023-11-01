@@ -12,11 +12,13 @@
 
 class GroupByPhysicalOperator : public PhysicalOperator {
 public:
-  GroupByPhysicalOperator(std::vector<GroupByUnit *>groupby_units, const std::vector<AggrFuncExpression *> &aggr_exprs,
-      const std::vector<FieldExpr *> &field_exprs)
-      : groupby_units_(groupby_units)
+  GroupByPhysicalOperator(const std::vector<GroupByUnit *> groupby_units, std::vector<AggrFuncExpression *> aggr_exprs,
+      std::vector<FieldExpr *> field_exprs)
+      : groupby_units_(groupby_units),
+        aggr_exprs_(aggr_exprs),
+        field_exprs_(field_exprs)
   {
-    tuple_.init(aggr_exprs, field_exprs);
+    tuple_.init(aggr_exprs_, field_exprs_);   // 
   }
 
   virtual ~GroupByPhysicalOperator() = default;
@@ -39,8 +41,10 @@ private:
   bool is_record_eof_ = false;
 
   // not own this
-  std::vector<GroupByUnit *> groupby_units_;
+  const std::vector<GroupByUnit *> groupby_units_;
 
   std::vector<Value> pre_values_;  // its size equal to groupby_units.size
   GroupTuple tuple_;
+  std::vector<AggrFuncExpression *> aggr_exprs_;
+  std::vector<FieldExpr *>          field_exprs_;
 };

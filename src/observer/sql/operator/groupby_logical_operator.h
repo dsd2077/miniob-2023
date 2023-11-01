@@ -12,29 +12,31 @@
 
 class GroupByLogicalOperator : public LogicalOperator {
 public:
-  GroupByLogicalOperator(const std::vector<GroupByUnit *> &groupby_units, std::vector<AggrFuncExpression *> &agg_exprs,
+  GroupByLogicalOperator(const std::vector<GroupByUnit *> groupby_units, std::vector<AggrFuncExpression *> &agg_exprs,
       std::vector<FieldExpr *> &field_exprs)
       : groupby_units_(groupby_units), agg_exprs_(agg_exprs), field_exprs_(field_exprs)
-  {}
+  {
+    int a = 1;
+  }
 
   virtual ~GroupByLogicalOperator() = default;
 
   LogicalOperatorType type() const override { return LogicalOperatorType::GROUP_BY; };
 
-  const std::vector<GroupByUnit *> &groupby_unit() {
+  const std::vector<GroupByUnit *> groupby_unit() {
     return groupby_units_;
   }
 
-  std::vector<AggrFuncExpression *> &agg_exprs() {
+  std::vector<AggrFuncExpression *> agg_exprs() {
     return agg_exprs_;
   }
 
-  std::vector<FieldExpr *> &field_exprs() {
+  std::vector<FieldExpr *> field_exprs() {
     return field_exprs_;
   }
 
 private:
-  const std::vector<GroupByUnit *> &groupby_units_;
-  std::vector<AggrFuncExpression *> &agg_exprs_;
-  std::vector<FieldExpr *> &field_exprs_;
+  const std::vector<GroupByUnit *> groupby_units_;
+  std::vector<AggrFuncExpression *> agg_exprs_;
+  std::vector<FieldExpr *> field_exprs_;
 };

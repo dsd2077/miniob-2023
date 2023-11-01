@@ -666,23 +666,34 @@ RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unord
 {
   if (field_ != nullptr) {
     field_->init(tables, table_map, db);
+  } else {
+    auto t = tables[0]->table_meta();
+    field_ = new FieldExpr(tables[0], tables[0]->table_meta().field(1));
   }
   return RC::SUCCESS;
 }
 
 RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 
 {
-  Field tmp_field(field_->field());
-  TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
-  return tuple.find_cell(temp, cell);      // 这里进入GroupTuple
+  if (AggrFuncType::AGGR_FUNC_TYPE_NUM != type_) {
+    TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
+    return tuple.find_cell(temp, cell);     
+  } else {
+    TupleCellSpec temp("", "", nullptr, type_);
+    return tuple.find_cell(temp, cell);     
+  }
 }
 
 void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFuncExpression *> &aggrfunc_exprs) 
 {
   switch (expr->type()) {
     case ExprType::AGGRFUNC: {
-      AggrFuncExpression *expr = dynamic_cast<AggrFuncExpression *>(expr);
-      aggrfunc_exprs.emplace_back(const_cast<AggrFuncExpression *>(expr));
+      // 坑！！！！！卡了一个下午
+      // AggrFuncExpression *expr = dynamic_cast<AggrFuncExpression *>(expr);
+      // aggrfunc_exprs.emplace_back(expr);
+
+      aggrfunc_exprs.push_back(dynamic_cast<AggrFuncExpression *>(expr));
+      auto type = aggrfunc_exprs[0]->type();
       break;
     }
     case ExprType::ARITHMETIC: {

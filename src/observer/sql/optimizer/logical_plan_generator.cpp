@@ -211,8 +211,12 @@ RC LogicalPlanGenerator::create_plan(
   if (0 != aggr_exprs.size()) {
     GroupByStmt *groupby_stmt = select_stmt->groupby_stmt();
     groupby_stmt->groupby_units();
-    unique_ptr<GroupByLogicalOperator> groupby_oper(
-        new GroupByLogicalOperator(groupby_stmt->groupby_units(), aggr_exprs, field_exprs));
+    unique_ptr<GroupByLogicalOperator> groupby_oper;
+    if (groupby_stmt == nullptr) {
+      groupby_oper = make_unique<GroupByLogicalOperator>(std::vector<GroupByUnit *>{}, aggr_exprs, field_exprs);
+    } else {
+      groupby_oper = make_unique<GroupByLogicalOperator>(groupby_stmt->groupby_units(), aggr_exprs, field_exprs);
+    }
     groupby_oper->add_child(std::move(top_oper));
     top_oper = std::move(groupby_oper);
     // delete_opers.emplace_back(groupby_oper);
@@ -221,7 +225,7 @@ RC LogicalPlanGenerator::create_plan(
 
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator());
   auto &projects = select_stmt->projects();
-  for (auto it = projects.begin(); it != projects.end(); it++) {
+  for (auto it = projects.begin(); it != projects.end(); it++) {    // select_attr 中的表达式转移到logical_oper中
     project_oper->add_project(*it);
   }
   project_oper->add_child(std::move(top_oper));

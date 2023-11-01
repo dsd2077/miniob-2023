@@ -97,7 +97,7 @@ enum class ExprType
 };
 
 typedef enum { ADD_OP, SUB_OP, MUL_OP, DIV_OP, EXP_OP_NUM } ExpOp;
-typedef enum { MAX, MIN, SUM, AVG, AGGR_FUNC_TYPE_NUM } AggrFuncType;
+typedef enum { MAX, MIN, SUM, AVG, CNT,AGGR_FUNC_TYPE_NUM } AggrFuncType;
 typedef enum { FUNC_LENGTH, FUNC_ROUND, FUNC_DATE_FORMAT, FUNC_TYPE_NUM } FuncType;
 typedef enum { SUB_IN, SUB_NOT_IN, SUB_EXISTS, SUB_NOT_EXISTS, SUB_NORMAL, SUB_TYPE_NUM } SubQueryType;
 typedef enum { ASC_, DESC_ } OrderDirection;

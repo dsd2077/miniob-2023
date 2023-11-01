@@ -238,11 +238,9 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
     }
   }
 
-  ProjectPhysicalOperator *project_operator = new ProjectPhysicalOperator;
-  std::vector<std::unique_ptr<Expression>> &project_fields = project_oper.expressions();
-  for (auto &expr : project_fields) {
-    project_operator->add_projection(expr);
-  }
+  ProjectPhysicalOperator *project_operator = new ProjectPhysicalOperator(project_oper.expressions());      
+
+
 
   if (child_phy_oper) {
     project_operator->add_child(std::move(child_phy_oper));
@@ -402,7 +400,9 @@ RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &groupby_oper, std:
       return rc;
     }
   }
-
+  auto vec = groupby_oper.groupby_unit();
+  auto vec1 = groupby_oper.agg_exprs();
+  auto vec2 = groupby_oper.field_exprs();
   oper = unique_ptr<PhysicalOperator>(new GroupByPhysicalOperator(groupby_oper.groupby_unit(), groupby_oper.agg_exprs(), groupby_oper.field_exprs()));
 
   if (child_physical_oper) {

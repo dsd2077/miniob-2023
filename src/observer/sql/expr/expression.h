@@ -507,7 +507,7 @@ public:
       case AggrFuncType::MIN: return "min";
       case AggrFuncType::SUM: return "sum";
       case AggrFuncType::AVG: return "avg";
-      case AggrFuncType::AGGR_FUNC_TYPE_NUM: return "count";
+      case AggrFuncType::CNT: return "count";
       default: break;
     }
   return "unknown_aggr_fun";

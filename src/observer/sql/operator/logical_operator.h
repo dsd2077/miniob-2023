@@ -66,6 +66,7 @@ public:
 
   void add_project(Expression* expr) {
     expressions_.emplace_back(expr);
+    auto t = expr->type();
   }
 
   std::vector<std::unique_ptr<Expression>> &expressions()
@@ -78,5 +79,5 @@ protected:
 
   ///< 表达式，比如select中的列，where中的谓词等等，都可以使用表达式来表示
   ///< 表达式能是一个常量，也可以是一个函数，也可以是一个列，也可以是一个子查询等等
-  std::vector<std::unique_ptr<Expression>> expressions_;    
+  std::vector<std::unique_ptr<Expression>> expressions_;      // 当这里的成员析构时，会不会将原来的裸指针置空？
 };

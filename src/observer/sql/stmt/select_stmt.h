@@ -61,7 +61,7 @@ public:
   FilterStmt *inner_join_filter_stmt() const { return inner_join_filter_stmt_; }
 
 private:
-  std::vector<Expression *> query_fields_;     
+  std::vector<Expression *> query_fields_;     // select_stmt的析构函数会自动释放vector中的指针,但是这个指针交给了project_logical_operator-->project_physical_operator
   std::vector<Table *> tables_;
   FilterStmt *filter_stmt_ = nullptr;     
   OrderByStmt *orderby_stmt_ = nullptr;

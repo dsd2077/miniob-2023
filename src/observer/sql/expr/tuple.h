@@ -262,9 +262,9 @@ public:
   ProjectTuple() = default;
   virtual ~ProjectTuple()
   {
-    for (Expression *spec : speces_) {
-      delete spec;
-    }
+    // for (Expression *spec : speces_) {
+    //   delete spec;
+    // }
     speces_.clear();
   }
 
@@ -304,18 +304,8 @@ public:
     return;
   }
 
-#if 0
-  RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
-  {
-    if (index < 0 || index >= static_cast<int>(speces_.size())) {
-      return RC::NOTFOUND;
-    }
-    spec = speces_[index];
-    return RC::SUCCESS;
-  }
-#endif
 private:
-  std::vector<Expression *> speces_;       // 这里能不能存Expression?
+  std::vector<Expression *> speces_;       
   Tuple *tuple_ = nullptr;
 };
 
@@ -592,7 +582,7 @@ private:
   int count_ = 0;
   std::vector<bool> all_null_;           // for every aggr expr
   std::vector<int> counts_;              // for every aggr expr
-  std::vector<Value> aggr_results_;  // for every aggr expr
+  std::vector<Value> aggr_results_;  //const_cast<AggrFuncExpression *>(expr) for every aggr expr
   std::vector<Value> field_results_;
 
   // not own these below

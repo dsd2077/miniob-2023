@@ -150,6 +150,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   OrderDirection                    order_direction;
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
+  AggrFuncType                      aggr_func_type;
 }
 
 // TODO:这四个TOKEN的含义？
@@ -220,6 +221,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <expression>          add_expr
 %type <expression>          mul_expr
 %type <expression>          aggr_func_expr
+%type <aggr_func_type>      aggr_func_type
 
 
 
@@ -523,6 +525,8 @@ select_stmt:        /*  select 语句的语法解析树*/
         $$->selection.attributes.swap(*$2);
         delete $2;
       }
+      // std::reverse($$->selection.attributes.begin(), $$->selection.attributes.end());   // 为什么这里要反转？因为select_attr的写法是反着的。
+
       if ($4 != nullptr) {
         $$->selection.relations.swap(*$4);
         delete $4;
@@ -934,32 +938,35 @@ unary_expr:
     ;
 
 aggr_func_expr:
-  AGGR_MAX LBRACE add_expr RBRACE
+  aggr_func_type LBRACE add_expr RBRACE
   {
-    assert($3->type() == ExprType::FIELD);
-    $$ = new AggrFuncExpression(AggrFuncType::MAX, (FieldExpr*)$3);
-  }
-  | AGGR_MIN LBRACE add_expr RBRACE
-  {
-    assert($3->type() == ExprType::FIELD);
-    $$ = new AggrFuncExpression(AggrFuncType::MIN, (FieldExpr*)$3);
-  }
-  | AGGR_SUM LBRACE add_expr RBRACE
-  {
-    assert($3->type() == ExprType::FIELD);
-    $$ = new AggrFuncExpression(AggrFuncType::SUM, (FieldExpr*)$3);
-  }
-  | AGGR_AVG LBRACE add_expr RBRACE
-  {
-    assert($3->type() == ExprType::FIELD);
-    $$ = new AggrFuncExpression(AggrFuncType::AVG, (FieldExpr*)$3);
+    assert(ExprType::FIELD == $3->type());
+    $$ = new AggrFuncExpression($1, static_cast<FieldExpr*>($3));
   }
   | AGGR_COUNT LBRACE '*' RBRACE
   {
-    ValueExpr * temp = new ValueExpr(Value("*"));
-    $$ = new AggrFuncExpression(AggrFuncType::AGGR_FUNC_TYPE_NUM, temp);
+    ValueExpr *temp = new ValueExpr(Value("*"));
+    $$ = new AggrFuncExpression(AggrFuncType::CNT, temp);
   }
   ;
+
+aggr_func_type:
+    AGGR_MAX {
+      $$ = AggrFuncType::MAX;
+    }
+    | AGGR_MIN {
+      $$ = AggrFuncType::MIN;
+    }
+    | AGGR_SUM {
+      $$ = AggrFuncType::SUM;
+    }
+    | AGGR_AVG {
+      $$ = AggrFuncType::AVG;
+    }
+    | AGGR_COUNT {
+      $$ = AggrFuncType::CNT;
+    }
+    ;
 
 
 sub_select_expr:

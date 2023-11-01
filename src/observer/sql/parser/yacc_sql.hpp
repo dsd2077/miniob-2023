@@ -160,8 +160,9 @@ union YYSTYPE
   OrderDirection                    order_direction;
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
+  AggrFuncType                      aggr_func_type;
 
-#line 165 "yacc_sql.hpp"
+#line 166 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

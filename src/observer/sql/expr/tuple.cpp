@@ -22,8 +22,10 @@ void GroupTuple::do_aggregate_first()
     counts_[i]   = 0;
   }
   for (size_t i = 0; i < aggr_exprs_.size(); ++i) {
-    const AggrFuncExpression *expr = aggr_exprs_[i];
-    expr->get_value(*tuple_, aggr_results_[i]);
+    AggrFuncExpression *expr = aggr_exprs_[i];
+    if (expr->get_aggr_func_type() != AggrFuncType::CNT) {
+      expr->get_value(*tuple_, aggr_results_[i]);
+    }
     if (!aggr_results_[i].is_null()) {
       all_null_[i] = false;
       counts_[i]++;
@@ -39,13 +41,15 @@ void GroupTuple::do_aggregate()
   Value tmp;
   for (size_t i = 0; i < aggr_exprs_.size(); ++i) {
     const AggrFuncExpression *expr = aggr_exprs_[i];
-    expr->get_value(*tuple_, tmp);
+    if (expr->get_aggr_func_type() != AggrFuncType::CNT) {
+      expr->get_value(*tuple_, tmp);
+    }
     if (tmp.is_null()) {  // cannot do any aggregate for NULL
       continue;
     }
     all_null_[i] = false;
     counts_[i]++;
-    if (AggrFuncType::AGGR_FUNC_TYPE_NUM == expr->get_aggr_func_type()) {
+    if (AggrFuncType::CNT == expr->get_aggr_func_type()) {
       continue;
     }
     // NOTE: aggr_results_[i] maybe null. tmp is not null
@@ -68,12 +72,12 @@ void GroupTuple::do_aggregate_done()
     const AggrFuncExpression *expr = aggr_exprs_[i];
     Value &res  = aggr_results_[i];
     // if all null, result is null
-    if (all_null_[i] && AggrFuncType::AGGR_FUNC_TYPE_NUM != expr->get_aggr_func_type()) {
+    if (all_null_[i] && AggrFuncType::CNT != expr->get_aggr_func_type()) {
       aggr_results_[i].set_null();
       continue;
     }
     switch (expr->get_aggr_func_type()) {
-      case AggrFuncType::AGGR_FUNC_TYPE_NUM: {
+      case AggrFuncType::CNT: {
         res.set_type(AttrType::INTS);
         res.set_int(counts_[i]);
         // res.modify_data((char *)&count_);

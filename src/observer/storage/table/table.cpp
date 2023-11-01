@@ -236,6 +236,7 @@ RC Table::insert_record(Record &record)
 
   rc = insert_entry_of_indexes(record.data(), record.rid());
   if (rc != RC::SUCCESS) { // 可能出现了键值重复
+    std::cout << "fail to insert entry to indexs , rc = " << strrc(rc) << std::endl;
     RC rc2 = delete_entry_of_indexes(record.data(), record.rid(), false/*error_on_not_exists*/);
     if (rc2 != RC::SUCCESS) {
       LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
@@ -430,7 +431,7 @@ RC Table::create_index(Trx *trx, std::vector<FieldMeta> &field_meta, const char 
                name(), index_name, strrc(rc));
       return rc;
     }
-    rc = index->insert_entry(record.data(), &record.rid());
+    rc = index->insert_entry(record.data(), &record.rid()); // 将record插入索引
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s",
                name(), index_name, strrc(rc));
@@ -537,6 +538,7 @@ RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
     std::cout << "record " << record << std::endl;
     rc = index->insert_entry(record, &rid); // 这里record是一整条记录，需要转变为index所需的列
     if (rc != RC::SUCCESS) {
+      std::cout << "maybe duplicated key" << std::endl;
       break;
     }
   }

@@ -885,7 +885,7 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
   }
   
   char *pdata = header_frame->data();
-  IndexFileHeader *file_header = (IndexFileHeader *)pdata;
+  IndexFileHeader *file_header = (IndexFileHeader *)pdata;  // 第一个页需要记录索引头信息
   // int offsets_len = 0;
   for(int i = 0 ; i < attr_lengths.size() ; i ++ ) {
     file_header->attr_lens[i] = attr_lengths[i];
@@ -1774,19 +1774,23 @@ RC BplusTreeHandler::delete_entry(const char *user_key, const RID *rid)
     return RC::INVALID_ARGUMENT;
   }
 
+  // common::MemPoolItem::unique_ptr pkey = make_key(user_key, *rid);
+  // common::MemPoolItem::unique_ptr pkey = mem_pool_item_->alloc_unique_ptr();
+
   common::MemPoolItem::unique_ptr pkey = make_key(user_key, *rid);
 
   // MemPoolItem::unique_ptr pkey = mem_pool_item_->alloc_unique_ptr();
+  int sz = 0;
+  for(int i = 0 ; i < file_header_.attr_num ; i ++ ) {
+    sz += file_header_.attr_lens[i];
+  }
   if (nullptr == pkey) {
-    int sz = 0;
-    for(int i = 0 ; i < file_header_.attr_num ; i ++ ) {
-      sz += file_header_.attr_lens[i];
-    }
-    LOG_WARN("Failed to alloc memory for key. size=%d", sz);
+    LOG_WARN("Failed to alloc memory for key. size=%d", sz + sizeof(RID));
     return RC::NOMEM;
   }
   char *key = static_cast<char *>(pkey.get());
 
+  // memcpy(key + sz, rid, sizeof(*rid));
   // memcpy(key, user_key, file_header_.attr_length);
   // memcpy(key + file_header_.attr_length, rid, sizeof(*rid));
 
@@ -1959,7 +1963,7 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
   } else {
 
     char *fixed_right_key = const_cast<char *>(right_user_key);
-    bool should_include_after_fix = false;
+    // bool should_include_after_fix = false;
     // if (tree_handler_.file_header_.attr_type == CHARS) {
     //   rc = fix_user_key(right_user_key, right_len, false /*want_greater*/, &fixed_right_key, &should_include_after_fix);
     //   if (rc != RC::SUCCESS) {
@@ -1977,10 +1981,10 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
       right_key_ = tree_handler_.make_key_for_select(fixed_right_key, *RID::min());
     }
 
-    if (fixed_right_key != right_user_key) {
-      delete[] fixed_right_key;
-      fixed_right_key = nullptr;
-    }
+    // if (fixed_right_key != right_user_key) {
+    //   delete[] fixed_right_key;
+    //   fixed_right_key = nullptr;
+    // }
   }
 
   if (touch_end()) {

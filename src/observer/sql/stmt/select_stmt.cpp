@@ -63,7 +63,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
 
   for (size_t i = 0; i < relations.size(); i++) {
     std::string table_name = relations[i].relation_name;
-    std::string alias_name = select_sql.relations[i].alias;
+    std::string alias_name = relations[i].alias;
     if ("" == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;

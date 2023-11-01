@@ -920,9 +920,6 @@ unary_expr:
     | ID DOT ID {
       $$ = new FieldExpr($3, $1);
     }
-    | LBRACE add_expr RBRACE {
-      $$ = $2;
-    }
     // | func_expr {
     //   $$ = $1;
     // }
@@ -935,6 +932,9 @@ unary_expr:
     | sub_select_list{
       $$ = $1;
     }
+    | LBRACE add_expr RBRACE {
+      $$ = $2;
+    }
     ;
 
 aggr_func_expr:
@@ -942,6 +942,11 @@ aggr_func_expr:
   {
     assert(ExprType::FIELD == $3->type());
     $$ = new AggrFuncExpression($1, static_cast<FieldExpr*>($3));
+  }
+  | AGGR_COUNT LBRACE add_expr RBRACE
+  {
+    assert(ExprType::FIELD == $3->type());
+    $$ = new AggrFuncExpression(AggrFuncType::CNT, static_cast<FieldExpr*>($3));
   }
   | AGGR_COUNT LBRACE '*' RBRACE
   {
@@ -962,9 +967,6 @@ aggr_func_type:
     }
     | AGGR_AVG {
       $$ = AggrFuncType::AVG;
-    }
-    | AGGR_COUNT {
-      $$ = AggrFuncType::CNT;
     }
     ;
 

@@ -39,7 +39,7 @@ private:
   RC write_state(SessionEvent *event, bool &need_disconnect);
   RC write_debug(SessionEvent *event, bool &need_disconnect);
   RC write_result_internal(SessionEvent *event, bool &need_disconnect);
-  RC print_tuple_header(ProjectPhysicalOperator *project_oper);
+  void get_tuple_header(ProjectPhysicalOperator *project_oper, std::string &output_string);
 
 protected:
   std::vector<char> send_message_delimiter_; ///< 发送消息分隔符

@@ -187,7 +187,8 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
 
   auto &oper = sql_result->get_operator();
   ProjectPhysicalOperator *project_oper = dynamic_cast<ProjectPhysicalOperator *>(oper.get());
-  rc = print_tuple_header(project_oper);
+  std::string header;
+  get_tuple_header(project_oper, header);
   if (rc != RC::SUCCESS){
     sql_result->close();
     return rc;
@@ -195,18 +196,13 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
 
   Tuple *tuple = nullptr;
   while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {
+    std::string new_line;
     assert(tuple != nullptr);
 
     int cell_num = tuple->cell_num();     
     for (int i = 0; i < cell_num; i++) {
       if (i != 0) {
-        const char *delim = " | ";
-        rc = writer_->writen(delim, strlen(delim));
-        if (OB_FAIL(rc)) {
-          LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-          sql_result->close();
-          return rc;
-        }
+        new_line += " | ";
       }
 
       Value value;
@@ -217,16 +213,14 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       }
 
       std::string cell_str = value.to_string();
-      rc = writer_->writen(cell_str.data(), cell_str.size());
-      if (OB_FAIL(rc)) {
-        LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-        sql_result->close();
-        return rc;
-      }
+      new_line += cell_str;
     }
-
-    char newline = '\n';
-    rc = writer_->writen(&newline, 1);
+    new_line += '\n';
+    if (header != "") {
+      writer_->writen(header.c_str(), header.size());
+      header = "";
+    }
+    rc = writer_->writen(new_line.c_str(), new_line.size());
     if (OB_FAIL(rc)) {
       LOG_WARN("failed to send data to client. err=%s", strerror(errno));
       sql_result->close();
@@ -238,7 +232,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     rc = RC::SUCCESS;
   }
 
-  if (project_oper == nullptr) {
+  if (project_oper == nullptr || rc != RC::SUCCESS) {
     // 除了select之外，其它的消息通常不会通过operator来返回结果，表头和行数据都是空的
     // 这里针对这种情况做特殊处理，当表头和行数据都是空的时候，就返回处理的结果
     // 可能是insert/delete等操作，不直接返回给客户端数据，这里把处理结果返回给客户端
@@ -267,9 +261,8 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   return rc;
 }
 
-RC PlainCommunicator::print_tuple_header(ProjectPhysicalOperator *project_oper) {
-  RC rc = RC::SUCCESS;
-  if (nullptr == project_oper) return rc;
+void PlainCommunicator::get_tuple_header(ProjectPhysicalOperator *project_oper, std::string &output_string) {
+  if (nullptr == project_oper) return;
 
   for (int i = 0; i < project_oper->cell_num(); i++) {
     Expression * expr = nullptr;
@@ -277,27 +270,12 @@ RC PlainCommunicator::print_tuple_header(ProjectPhysicalOperator *project_oper) 
     std::string alias = expr->name();
     if (alias != "") {
       if (0 != i) {
-        const char *delim = " | ";
-        rc                = writer_->writen(delim, strlen(delim));
-        if (OB_FAIL(rc)) {
-          LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-          return rc;
-        }
+        output_string += " | ";
       }
-      rc = writer_->writen(alias.c_str(), alias.size());
-      if (OB_FAIL(rc)) {
-        LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-        return rc;
-      }
+      output_string += alias.c_str();
     }
   }
   if (project_oper->cell_num() > 0) {
-    char newline = '\n';
-    rc = writer_->writen(&newline, 1);
-    if (OB_FAIL(rc)) {
-      LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-      return rc;
-    }
+    output_string += '\n';
   }
-  return rc;
 }

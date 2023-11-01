@@ -27,6 +27,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/project_logical_operator.h"
 #include "sql/operator/explain_logical_operator.h"
 #include "sql/operator/order_by_logical_operator.h"
+#include "sql/operator/groupby_logical_operator.h"
+#include "sql/operator/groupby_physical_operator.h"
 
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
@@ -93,16 +95,8 @@ RC LogicalPlanGenerator::create_plan(
   unique_ptr<LogicalOperator> table_oper(nullptr);  // table_oper可能是TableGetLogicalOperator（单表）或者JoinLogicalOperator(多表)
 
   const std::vector<Table *> &tables = select_stmt->tables();
-  const std::vector<Field> &all_fields = select_stmt->query_fields();
   for (Table *table : tables) {
-    std::vector<Field> fields;
-    for (const Field &field : all_fields) {
-      if (0 == strcmp(field.table_name(), table->name())) {   // 找出每张表中要查询的属性
-        fields.push_back(field);
-      }
-    }
-
-    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, true/*readonly*/));
+    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, true/*readonly*/));
     if (table_oper == nullptr) {
       table_oper = std::move(table_get_oper);   
     } else {
@@ -214,20 +208,22 @@ RC LogicalPlanGenerator::create_plan(
   // }
 
   // 2.6 gen groupby oper
-  GroupByStmt *empty_groupby_stmt = nullptr;  // new a empty groupby stmt for no groupby fields
-  GroupByOperator *group_oper = nullptr;
   if (0 != aggr_exprs.size()) {
-    group_oper = new GroupByOperator(groupby_stmt, aggr_exprs, field_exprs);
-    if (nullptr == select_stmt->groupby_stmt()) {
-      empty_groupby_stmt = new GroupByStmt();
-      group_oper->set_groupby_stmt(empty_groupby_stmt);
-    }
-    group_oper->add_child(top_op);
-    top_op = group_oper;
-    delete_opers.emplace_back(group_oper);
+    GroupByStmt *groupby_stmt = select_stmt->groupby_stmt();
+    groupby_stmt->groupby_units();
+    unique_ptr<GroupByLogicalOperator> groupby_oper(
+        new GroupByLogicalOperator(groupby_stmt->groupby_units(), aggr_exprs, field_exprs));
+    groupby_oper->add_child(std::move(top_oper));
+    top_oper = std::move(groupby_oper);
+    // delete_opers.emplace_back(groupby_oper);
   }
 
-  unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
+
+  unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator());
+  auto &projects = select_stmt->projects();
+  for (auto it = projects.begin(); it != projects.end(); it++) {
+    project_oper->add_project(*it);
+  }
   project_oper->add_child(std::move(top_oper));
 
   logical_operator.swap(project_oper);
@@ -292,12 +288,7 @@ RC LogicalPlanGenerator::create_plan(
   // 为where子句创建计划
   Table *table = delete_stmt->table();
   FilterStmt *filter_stmt = delete_stmt->filter_stmt();
-  std::vector<Field> fields;
-  for (int i = table->table_meta().sys_field_num(); i < table->table_meta().field_num(); i++) {
-    const FieldMeta *field_meta = table->table_meta().field(i);
-    fields.push_back(Field(table, field_meta));
-  }
-  unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, false/*readonly*/));
+  unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, false/*readonly*/));
 
   unique_ptr<LogicalOperator> predicate_oper;       // where子句
   RC rc = create_plan(filter_stmt, predicate_oper);
@@ -321,12 +312,7 @@ RC LogicalPlanGenerator::create_plan(
 RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<LogicalOperator> &logical_operator) {
   // 为where子句创建计划
   Table *table = update_stmt->table();
-  std::vector<Field> fields;
-  for (int i = table->table_meta().sys_field_num(); i < table->table_meta().field_num(); i++) {
-    const FieldMeta *field_meta = table->table_meta().field(i);
-    fields.push_back(Field(table, field_meta));
-  }
-  unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, fields, false/*readonly*/));
+  unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, false/*readonly*/));
 
   RC rc = RC::SUCCESS;
   unique_ptr<LogicalOperator> predicate_oper;       

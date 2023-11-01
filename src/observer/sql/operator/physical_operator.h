@@ -50,6 +50,7 @@ enum class PhysicalOperatorType
   INSERT,
   UPDATE,
   ORDER_BY,
+  GROUP_BY,
 };
 
 /**

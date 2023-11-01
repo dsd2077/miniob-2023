@@ -114,6 +114,26 @@ public:
     return attr_type_;
   }
 
+  static const Value &min(const Value &a, const Value &b)
+  {
+    if (a.is_null()) {
+      return b;  // even if b is also null
+    }
+    return a.compare(b) <= 0 ? a : b;
+  }
+
+  static const Value &max(const Value &a, const Value &b)
+  {
+    if (a.is_null()) {
+      return b;  // even if b is also null
+    }
+    return a.compare(b) >= 0 ? a : b;
+  }
+  static const Value add(const Value &left, const Value &right);
+  static const Value sub(const Value &left, const Value &right);
+  static const Value mul(const Value &left, const Value &right);
+  static const Value div(const Value &left, const Value &right);
+
 public:
   /**
    * 获取对应的值

@@ -64,7 +64,7 @@ RC SqlResult::close()
 
 RC SqlResult::next_tuple(Tuple *&tuple)
 {
-  RC rc = operator_->next();
+  RC rc = operator_->next();      // 这个operator一定是ProjectOper
   if (rc != RC::SUCCESS) {
     return rc;
   }

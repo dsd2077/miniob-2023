@@ -662,16 +662,19 @@ RC SubQueryExpression::close_sub_query() const
 ////////////////////////////////////////////////////////////////////////////////
 // AggrFuncType
 
-RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db = nullptr)
+RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db)
 {
-  field_->init(tables, table_map, db);
+  if (field_ != nullptr) {
+    field_->init(tables, table_map, db);
+  }
+  return RC::SUCCESS;
 }
 
 RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 
 {
   Field tmp_field(field_->field());
-  tmp_field.set_aggr(type_);
-  return tuple.find_cell(tmp_field, cell);
+  TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
+  return tuple.find_cell(temp, cell);      // 这里进入GroupTuple
 }
 
 void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFuncExpression *> &aggrfunc_exprs) 

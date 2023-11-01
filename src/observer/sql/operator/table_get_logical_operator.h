@@ -24,7 +24,7 @@ See the Mulan PSL v2 for more details. */
 class TableGetLogicalOperator : public LogicalOperator
 {
 public:
-  TableGetLogicalOperator(Table *table, const std::vector<Field> &fields, bool readonly);
+  TableGetLogicalOperator(Table *table, bool readonly);
   virtual ~TableGetLogicalOperator() = default;
 
   LogicalOperatorType type() const override
@@ -43,7 +43,6 @@ public:
 
 private:
   Table *table_ = nullptr;
-  std::vector<Field> fields_;     // fields_字段没有用上
   bool readonly_ = false;
 
   // 与当前表相关的过滤操作，可以尝试在遍历数据时执行

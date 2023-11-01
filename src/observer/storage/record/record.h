@@ -161,3 +161,5 @@ private:
   int   len_   = 0;       /// 如果不是record自己来管理内存，这个字段可能是无效的
   bool  owner_ = false;   /// 表示当前是否由record来管理内存
 };
+
+typedef std::vector<Record *> CompoundRecord;

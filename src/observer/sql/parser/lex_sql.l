@@ -121,6 +121,11 @@ EXISTS                                  RETURN_TOKEN(EXISTS);
 IS                                      RETURN_TOKEN(IS);
 NULL                                    RETURN_TOKEN(NULL_VALUE);
 AS                                      RETURN_TOKEN(AS); 
+MAX                                     RETURN_TOKEN(AGGR_MAX);
+MIN                                     RETURN_TOKEN(AGGR_MIN);
+SUM                                     RETURN_TOKEN(AGGR_SUM);
+AVG                                     RETURN_TOKEN(AGGR_AVG);
+COUNT                                   RETURN_TOKEN(AGGR_COUNT);
 
 
 INT                                     RETURN_TOKEN(INT_T);    

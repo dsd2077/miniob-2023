@@ -14,11 +14,13 @@ See the Mulan PSL v2 for more details. */
 
 #include "net/plain_communicator.h"
 #include "net/buffered_writer.h"
+#include "sql/expr/expression.h"
 #include "sql/expr/tuple.h"
 #include "event/session_event.h"
 #include "session/session.h"
 #include "common/io/io.h"
 #include "common/log/log.h"
+#include "sql/operator/project_physical_operator.h"
 
 PlainCommunicator::PlainCommunicator()
 {
@@ -183,49 +185,19 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     return write_state(event, need_disconnect);
   }
 
-  const TupleSchema &schema = sql_result->tuple_schema();
-  const int cell_num = schema.cell_num();
-
-  // 打印表头信息,不是所有的语句都需要答应表头信息
-  for (int i = 0; i < cell_num; i++) {
-    const TupleCellSpec &spec = schema.cell_at(i);
-    const char *alias = spec.alias();
-    if (nullptr != alias || alias[0] != 0) {
-      if (0 != i) {
-        const char *delim = " | ";
-        rc = writer_->writen(delim, strlen(delim));
-        if (OB_FAIL(rc)) {
-          LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-          return rc;
-        }
-      }
-
-      int len = strlen(alias);
-      rc = writer_->writen(alias, len);
-      if (OB_FAIL(rc)) {
-        LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-        sql_result->close();
-        return rc;
-      }
-    }
+  auto &oper = sql_result->get_operator();
+  ProjectPhysicalOperator *project_oper = dynamic_cast<ProjectPhysicalOperator *>(oper.get());
+  rc = print_tuple_header(project_oper);
+  if (rc != RC::SUCCESS){
+    sql_result->close();
+    return rc;
   }
 
-  if (cell_num > 0) {
-    char newline = '\n';
-    rc = writer_->writen(&newline, 1);
-    if (OB_FAIL(rc)) {
-      LOG_WARN("failed to send data to client. err=%s", strerror(errno));
-      sql_result->close();
-      return rc;
-    }
-  }
-
-  rc = RC::SUCCESS;
   Tuple *tuple = nullptr;
   while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {
     assert(tuple != nullptr);
 
-    int cell_num = tuple->cell_num();
+    int cell_num = tuple->cell_num();     
     for (int i = 0; i < cell_num; i++) {
       if (i != 0) {
         const char *delim = " | ";
@@ -266,7 +238,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     rc = RC::SUCCESS;
   }
 
-  if (cell_num == 0) {
+  if (project_oper == nullptr) {
     // 除了select之外，其它的消息通常不会通过operator来返回结果，表头和行数据都是空的
     // 这里针对这种情况做特殊处理，当表头和行数据都是空的时候，就返回处理的结果
     // 可能是insert/delete等操作，不直接返回给客户端数据，这里把处理结果返回给客户端
@@ -277,7 +249,6 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     sql_result->set_return_code(rc);
     return write_state(event, need_disconnect);
   } else {
-
     rc = writer_->writen(send_message_delimiter_.data(), send_message_delimiter_.size());
     if (OB_FAIL(rc)) {
       LOG_ERROR("Failed to send data back to client. ret=%s, error=%s", strrc(rc), strerror(errno));
@@ -293,5 +264,40 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     rc = rc_close;
   }
 
+  return rc;
+}
+
+RC PlainCommunicator::print_tuple_header(ProjectPhysicalOperator *project_oper) {
+  RC rc = RC::SUCCESS;
+  if (nullptr == project_oper) return rc;
+
+  for (int i = 0; i < project_oper->cell_num(); i++) {
+    Expression * expr = nullptr;
+    project_oper->expression_at(i, expr);
+    std::string alias = expr->name();
+    if (alias != "") {
+      if (0 != i) {
+        const char *delim = " | ";
+        rc                = writer_->writen(delim, strlen(delim));
+        if (OB_FAIL(rc)) {
+          LOG_WARN("failed to send data to client. err=%s", strerror(errno));
+          return rc;
+        }
+      }
+      rc = writer_->writen(alias.c_str(), alias.size());
+      if (OB_FAIL(rc)) {
+        LOG_WARN("failed to send data to client. err=%s", strerror(errno));
+        return rc;
+      }
+    }
+  }
+  if (project_oper->cell_num() > 0) {
+    char newline = '\n';
+    rc = writer_->writen(&newline, 1);
+    if (OB_FAIL(rc)) {
+      LOG_WARN("failed to send data to client. err=%s", strerror(errno));
+      return rc;
+    }
+  }
   return rc;
 }

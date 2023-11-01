@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include "sql/expr/expression.h"
 #include "sql/operator/physical_operator.h"
 
 /**
@@ -32,11 +33,16 @@ public:
   {
     
   }
-  void add_projection(const Table *table, const FieldMeta *field);
+  void add_projection(std::unique_ptr<Expression> &expr, bool is_single_table = false);
 
   PhysicalOperatorType type() const override
   {
     return PhysicalOperatorType::PROJECT;
+  }
+
+  void expression_at(int index, Expression *&expr) const
+  {
+    return tuple_.expression_at(index, expr);
   }
 
   RC open(Trx *trx) override;

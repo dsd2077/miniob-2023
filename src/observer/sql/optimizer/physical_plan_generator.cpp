@@ -39,6 +39,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/order_by_logical_operator.h"
 #include "sql/operator/order_by_physical_operator.h"
 #include "sql/parser/parse_defs.h"
+#include "sql/operator/groupby_logical_operator.h"
+#include "sql/operator/groupby_physical_operator.h"
 
 using namespace std;
 
@@ -54,19 +56,15 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
     case LogicalOperatorType::TABLE_GET: {
       return create_plan(static_cast<TableGetLogicalOperator &>(logical_operator), oper);
     } break;
-
     case LogicalOperatorType::PREDICATE: {
       return create_plan(static_cast<PredicateLogicalOperator &>(logical_operator), oper);
     } break;
-
     case LogicalOperatorType::PROJECTION: {
       return create_plan(static_cast<ProjectLogicalOperator &>(logical_operator), oper);
     } break;
-
     case LogicalOperatorType::INSERT: {
       return create_plan(static_cast<InsertLogicalOperator &>(logical_operator), oper);
     } break;
-
     case LogicalOperatorType::DELETE: {
       return create_plan(static_cast<DeleteLogicalOperator &>(logical_operator), oper);
     } break;
@@ -79,9 +77,11 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
     case LogicalOperatorType::EXPLAIN: {
       return create_plan(static_cast<ExplainLogicalOperator &>(logical_operator), oper);
     } break;
-
     case LogicalOperatorType::JOIN: {
       return create_plan(static_cast<JoinLogicalOperator &>(logical_operator), oper);
+    } break;
+    case LogicalOperatorType::GROUP_BY: {
+      return create_plan(static_cast<GroupByLogicalOperator &>(logical_operator), oper);
     } break;
 
     default: {
@@ -239,9 +239,9 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
   }
 
   ProjectPhysicalOperator *project_operator = new ProjectPhysicalOperator;
-  const vector<Field> &project_fields = project_oper.fields();
-  for (const Field &field : project_fields) {
-    project_operator->add_projection(field.table(), field.meta());
+  std::vector<std::unique_ptr<Expression>> &project_fields = project_oper.expressions();
+  for (auto &expr : project_fields) {
+    project_operator->add_projection(expr);
   }
 
   if (child_phy_oper) {
@@ -381,6 +381,29 @@ RC PhysicalPlanGenerator::create_plan(OrderByLogicalOperator &order_by_oper, std
   }
 
   oper = unique_ptr<PhysicalOperator>(new OrderByPhysicalOperator(order_by_oper.order_by_fields()));
+
+  if (child_physical_oper) {
+    oper->add_child(std::move(child_physical_oper));
+  }
+  return rc;
+}
+
+RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &groupby_oper, std::unique_ptr<PhysicalOperator> &oper) {
+  vector<unique_ptr<LogicalOperator>> &child_opers = groupby_oper.children();
+
+  unique_ptr<PhysicalOperator> child_physical_oper;
+
+  RC rc = RC::SUCCESS;
+  if (!child_opers.empty()) {
+    LogicalOperator *child_oper = child_opers.front().get();
+    rc = create(*child_oper, child_physical_oper);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to create physical operator. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+
+  oper = unique_ptr<PhysicalOperator>(new GroupByPhysicalOperator(groupby_oper.groupby_unit(), groupby_oper.agg_exprs(), groupby_oper.field_exprs()));
 
   if (child_physical_oper) {
     oper->add_child(std::move(child_physical_oper));

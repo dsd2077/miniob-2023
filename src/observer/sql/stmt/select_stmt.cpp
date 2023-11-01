@@ -62,28 +62,28 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
   }
 
   for (size_t i = 0; i < relations.size(); i++) {
-    const char *table_name = relations[i].relation_name.c_str();
-    const char *alias_name = select_sql.relations[i].alias.c_str();
-    if (nullptr == table_name) {
+    std::string table_name = relations[i].relation_name;
+    std::string alias_name = select_sql.relations[i].alias;
+    if ("" == table_name) {
       LOG_WARN("invalid argument. relation name is null. index=%d", i);
       return RC::INVALID_ARGUMENT;
     }
 
-    Table *table = db->find_table(table_name);
+    Table *table = db->find_table(table_name.c_str());
     if (nullptr == table) {
-      LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name);
+      LOG_WARN("no such table. db=%s, table_name=%s", db->name(), table_name.c_str());
       return RC::SCHEMA_TABLE_NOT_EXIST;
     }
     // duplicate alias
-    if (nullptr != alias_name) {
-      if (0 != table_map.count(std::string(alias_name))) {
+    if ("" != alias_name) {
+      if (0 != table_map.count(alias_name)) {
         return RC::SQL_SYNTAX;
       }
     }
 
     tables.push_back(table);
     table_map.insert(std::pair<std::string, Table *>(table_name, table));
-    if (alias_name != nullptr) {
+    if ("" != alias_name) {
       table_map.insert(std::pair<std::string, Table *>(alias_name, table));
       alias_map.insert(std::pair<Table *, std::string>(table, alias_name));
     }
@@ -100,7 +100,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
       for (Table *table : tables) {     
         // wildcard_fields(table, query_fields);
         auto it2 = alias_map.find(table);
-        std::string table_name(table->name());
+        std::string table_name = table->name();
         if (it2 != alias_map.end()) {
           table_name = it2->second;
         }
@@ -116,6 +116,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
               alias = std::string(table_name) + '.' + std::string(table_meta.field(i)->name());
             }
             tmp_field->set_name(alias);
+            tmp_field->init(tables, table_map);
             query_fields.emplace_back(tmp_field);
           }
         }

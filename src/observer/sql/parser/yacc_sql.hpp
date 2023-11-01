@@ -112,12 +112,17 @@ extern int yydebug;
     LIKE_T = 313,                  /* LIKE_T  */
     NOT_LIKE_T = 314,              /* NOT_LIKE_T  */
     AS = 315,                      /* AS  */
-    NUMBER = 316,                  /* NUMBER  */
-    FLOAT = 317,                   /* FLOAT  */
-    ID = 318,                      /* ID  */
-    DATE = 319,                    /* DATE  */
-    SSS = 320,                     /* SSS  */
-    UMINUS = 321                   /* UMINUS  */
+    AGGR_MAX = 316,                /* AGGR_MAX  */
+    AGGR_MIN = 317,                /* AGGR_MIN  */
+    AGGR_SUM = 318,                /* AGGR_SUM  */
+    AGGR_AVG = 319,                /* AGGR_AVG  */
+    AGGR_COUNT = 320,              /* AGGR_COUNT  */
+    NUMBER = 321,                  /* NUMBER  */
+    FLOAT = 322,                   /* FLOAT  */
+    ID = 323,                      /* ID  */
+    DATE = 324,                    /* DATE  */
+    SSS = 325,                     /* SSS  */
+    UMINUS = 326                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -126,7 +131,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 120 "yacc_sql.y"
+#line 125 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   CompOp                            comp;
@@ -156,7 +161,7 @@ union YYSTYPE
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
 
-#line 160 "yacc_sql.hpp"
+#line 165 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

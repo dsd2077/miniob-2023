@@ -54,10 +54,120 @@ Tuple *ProjectPhysicalOperator::current_tuple()
   return &tuple_;
 }
 
-void ProjectPhysicalOperator::add_projection(const Table *table, const FieldMeta *field_meta)
+void gen_project_name(const Expression *expr, bool is_single_table, std::string &result_name)
+{
+
+  if (!expr->name().empty()) {
+    result_name = expr->name();
+    return;
+  }
+
+  // if (expr->with_brace()) {
+  //   result_name += '(';
+  // }
+  switch (expr->type()) {
+    case ExprType::FIELD: {
+      FieldExpr *fexpr = (FieldExpr *)expr;
+      const Field &field = fexpr->field();
+      if (!is_single_table) {
+        result_name += std::string(field.table_name()) + '.' + std::string(field.field_name());
+      } else {
+        result_name += std::string(field.field_name());
+      }
+      break;
+    }
+    case ExprType::VALUE: {
+      ValueExpr *vexpr = (ValueExpr *)expr;
+      Value cell;
+      vexpr->get_value(cell);
+      std::stringstream ss;
+      std::string str = cell.to_string();
+      result_name += str;
+      break;
+    }
+    // case ExprType::ARITHMETIC: {
+    //   ArithmeticExpr *bexpr = (ArithmeticExpr *)expr;
+    //   if (bexpr->is_minus()) {
+    //     result_name += '-';
+    //   } else {
+    //     gen_project_name(bexpr->get_left(), is_single_table, result_name);
+    //     result_name += bexpr->get_op_char();
+    //   }
+    //   gen_project_name(bexpr->get_right(), is_single_table, result_name);
+    //   break;
+    // }
+    case ExprType::AGGRFUNC: {
+      AggrFuncExpression *afexpr = (AggrFuncExpression *)expr;
+      result_name += afexpr->get_func_name();
+      result_name += '(';
+      if (afexpr->is_param_value()) {
+        gen_project_name(afexpr->get_param_value(), is_single_table, result_name);
+      } else {
+        const Field &field = afexpr->field();
+        if (!is_single_table) {   // 多表输出必须使用tablename.fieldname
+          result_name += std::string(field.table_name()) + '.' + std::string(field.field_name());
+        } else {
+          result_name += std::string(field.field_name());
+        }
+      }
+      result_name += ')';
+      break;
+    }
+    // case ExprType::FUNC: {
+    //   FuncExpression *fexpr = (FuncExpression *)expr;
+    //   switch (fexpr->get_func_type()) {
+    //     case FUNC_LENGTH: {
+    //       result_name += "length(";
+    //       gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //       result_name += ")";
+    //       break;
+    //     }
+    //     case FUNC_ROUND: {
+    //       result_name += "round(";
+    //       if (fexpr->get_param_size() > 1) {
+    //         gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //         result_name += ",";
+    //         gen_project_name(fexpr->get_params()[1], is_single_table, result_name);
+    //       } else {
+    //         gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //       }
+    //       result_name += ")";
+    //       break;
+    //     }
+    //     case FUNC_DATE_FORMAT: {
+    //       result_name += "date_format(";
+    //       gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //       result_name += ",";
+    //       gen_project_name(fexpr->get_params()[1], is_single_table, result_name);
+    //       result_name += ")";
+    //       break;
+    //     }
+    //     default:
+    //       break;
+    //   }
+    // }
+    default:
+      break;
+  }
+  // if (expr->with_brace()) {
+  //   result_name += ')';
+  // }
+}
+
+void ProjectPhysicalOperator::add_projection(std::unique_ptr<Expression> &expr, bool is_single_table)
 {
   // 对单表来说，展示的(alias) 字段总是字段名称，
   // 对多表查询来说，展示的alias 需要带表名字
-  TupleCellSpec *spec = new TupleCellSpec(table->name(), field_meta->name(), field_meta->name());
-  tuple_.add_cell_spec(spec);
+  std::string alias_name;
+  gen_project_name(expr.get(), is_single_table, alias_name);
+  expr->set_name(alias_name);
+  tuple_.add_project(expr.get());
 }
+
+// void ProjectPhysicalOperator::add_projection(const Table *table, const FieldMeta *field_meta)
+// {
+//   // 对单表来说，展示的(alias) 字段总是字段名称，
+//   // 对多表查询来说，展示的alias 需要带表名字
+//   TupleCellSpec *spec = new TupleCellSpec(table->name(), field_meta->name(), field_meta->name());
+//   tuple_.add_cell_spec(spec);
+// }

@@ -113,6 +113,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LIKE_T
         NOT_LIKE_T
         AS
+        AGGR_MAX
+        AGGR_MIN
+        AGGR_SUM
+        AGGR_AVG
+        AGGR_COUNT
 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
@@ -160,7 +165,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <value>               value
 %type <number>              number
 %type <comp>                comp_op
-%type <rel_attr>            rel_attr
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
@@ -172,6 +176,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_list>           select_attr
 %type <attr_list>           attr_list
 %type <rel_attr_item>       rel_attr_item
+%type <rel_attr_item>       rel_attr
 
 %type <expression_list>     expression_list
 %type <sql_node>            calc_stmt
@@ -214,6 +219,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <expression>          sub_select_list
 %type <expression>          add_expr
 %type <expression>          mul_expr
+%type <expression>          aggr_func_expr
 
 
 
@@ -679,7 +685,7 @@ from:
   {
     $$ = new std::vector<Relation>;
     $$->emplace_back(*$1);
-    delete rel_item;
+    delete $1;
   }
   | rel_item rel_list 
   {
@@ -694,7 +700,7 @@ rel_list:     // 返回std::vector<Relation> *
     $$ = nullptr;
   }
   | COMMA rel_item rel_list {	
-    std::vector<Relation> * temp = rel_list;
+    std::vector<Relation> * temp = $3;
     if (temp == nullptr) {
       temp = new std::vector<Relation>;
       temp->emplace_back(*$2);
@@ -741,10 +747,11 @@ inner_join_list:  // 返回std::vector<InnerJoinNode> *
     ;
 
 join_clause:   // 返回InnerJoinNode * 
-    INNER JOIN ID join_conditions {
+    INNER JOIN rel_item join_conditions {
         $$ = new InnerJoinNode;
-        $$->relation_name = $3;
+        $$->relation_name = *$3;
         $$->conditions = $4;
+        delete $3;
     }
     ;
 
@@ -915,9 +922,9 @@ unary_expr:
     // | func_expr {
     //   $$ = $1;
     // }
-    // | aggr_func_expr {
-    //   $$ = $1;
-    // }
+    | aggr_func_expr {
+      $$ = $1;
+    }
     | sub_select_expr {
        $$ = $1;
     }
@@ -925,6 +932,35 @@ unary_expr:
       $$ = $1;
     }
     ;
+
+aggr_func_expr:
+  AGGR_MAX LBRACE add_expr RBRACE
+  {
+    assert($3->type() == ExprType::FIELD);
+    $$ = new AggrFuncExpression(AggrFuncType::MAX, (FieldExpr*)$3);
+  }
+  | AGGR_MIN LBRACE add_expr RBRACE
+  {
+    assert($3->type() == ExprType::FIELD);
+    $$ = new AggrFuncExpression(AggrFuncType::MIN, (FieldExpr*)$3);
+  }
+  | AGGR_SUM LBRACE add_expr RBRACE
+  {
+    assert($3->type() == ExprType::FIELD);
+    $$ = new AggrFuncExpression(AggrFuncType::SUM, (FieldExpr*)$3);
+  }
+  | AGGR_AVG LBRACE add_expr RBRACE
+  {
+    assert($3->type() == ExprType::FIELD);
+    $$ = new AggrFuncExpression(AggrFuncType::AVG, (FieldExpr*)$3);
+  }
+  | AGGR_COUNT LBRACE '*' RBRACE
+  {
+    ValueExpr * temp = new ValueExpr(Value("*"));
+    $$ = new AggrFuncExpression(AggrFuncType::AGGR_FUNC_TYPE_NUM, temp);
+  }
+  ;
+
 
 sub_select_expr:
   LBRACE select_stmt RBRACE 

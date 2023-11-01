@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <cassert>
 #include <iostream>
 #include "storage/table/table.h"
 #include "storage/field/field_meta.h"
@@ -21,7 +22,7 @@ See the Mulan PSL v2 for more details. */
 class TupleCellSpec
 {
 public:
-  TupleCellSpec(const char *table_name, const char *field_name, const char *alias = nullptr);
+  TupleCellSpec(const char *table_name, const char *field_name,const char *alias = nullptr, AggrFuncType aggr_type = AggrFuncType::AGGR_FUNC_TYPE_NUM);
   TupleCellSpec(const char *alias);
 
   const char *table_name() const
@@ -37,8 +38,24 @@ public:
     return alias_.c_str();
   }
 
+  bool with_aggr() const { return aggr_type_ >= 0 && aggr_type_ < AggrFuncType::AGGR_FUNC_TYPE_NUM; }
+
+  AggrFuncType get_aggr_type() const
+  {
+    assert(with_aggr());
+    return aggr_type_;
+  }
+
+  bool equal(const TupleCellSpec &other) const
+  {
+    return table_name_ == other.table_name_ && field_name_ == other.field_name_ && aggr_type_ == other.aggr_type_;
+  }
+
+  bool equal_with_aggr_type(const TupleCellSpec &other) const { return equal(other) && aggr_type_ == other.aggr_type_; }
+
 private:
   std::string table_name_;
   std::string field_name_;
   std::string alias_;
+  AggrFuncType aggr_type_ = AggrFuncType::AGGR_FUNC_TYPE_NUM;
 };

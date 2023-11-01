@@ -31,6 +31,7 @@ class ExplainLogicalOperator;
 class JoinLogicalOperator;
 class CalcLogicalOperator;
 class OrderByLogicalOperator;
+class GroupByLogicalOperator;
 
 /**
  * @brief 物理计划生成器
@@ -57,5 +58,6 @@ private:
   RC create_plan(JoinLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(CalcLogicalOperator &logical_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan(OrderByLogicalOperator &order_by_oper, std::unique_ptr<PhysicalOperator> &oper);
+  RC create_plan(GroupByLogicalOperator &groupby_oper, std::unique_ptr<PhysicalOperator> &oper);
   RC create_plan_for_subquery(std::unique_ptr<Expression> &expr);
 };

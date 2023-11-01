@@ -43,6 +43,7 @@ enum class LogicalOperatorType
   UPDATE,
   EXPLAIN,    ///< 查看执行计划
   ORDER_BY,   
+  GROUP_BY
 };
 
 /**
@@ -62,6 +63,11 @@ public:
   {
     return children_;
   }
+
+  void add_project(Expression* expr) {
+    expressions_.emplace_back(expr);
+  }
+
   std::vector<std::unique_ptr<Expression>> &expressions()
   {
     return expressions_;

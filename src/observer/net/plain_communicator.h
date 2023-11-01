@@ -17,12 +17,15 @@ See the Mulan PSL v2 for more details. */
 #include <vector>
 
 #include "net/communicator.h"
+#include "sql/expr/expression.h"
 
 /**
  * @brief 与客户端进行通讯
  * @ingroup Communicator
  * @details 使用简单的文本通讯协议，每个消息使用'\0'结尾
  */
+ class ProjectPhysicalOperator;
+
 class PlainCommunicator : public Communicator 
 {
 public:
@@ -36,6 +39,7 @@ private:
   RC write_state(SessionEvent *event, bool &need_disconnect);
   RC write_debug(SessionEvent *event, bool &need_disconnect);
   RC write_result_internal(SessionEvent *event, bool &need_disconnect);
+  RC print_tuple_header(ProjectPhysicalOperator *project_oper);
 
 protected:
   std::vector<char> send_message_delimiter_; ///< 发送消息分隔符

@@ -63,6 +63,7 @@ public:
   {
     this->table_ = table;
   }
+
   void set_field(const FieldMeta *field)
   {
     this->field_ = field;

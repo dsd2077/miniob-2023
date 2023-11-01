@@ -458,9 +458,12 @@ private:
 class AggrFuncExpression : public Expression {
 public:
   AggrFuncExpression() = default;
-  AggrFuncExpression(AggrFuncType type, const FieldExpr *field) : type_(type), field_(field)
+  AggrFuncExpression(AggrFuncType type, FieldExpr *field) : type_(type), field_(field)
   {}
-  AggrFuncExpression(AggrFuncType type, const FieldExpr *field, bool with_brace) : AggrFuncExpression(type, field)
+  AggrFuncExpression(AggrFuncType type, ValueExpr *value) : type_(type), value_(value)
+  {}
+
+  AggrFuncExpression(AggrFuncType type, FieldExpr *field, bool with_brace) : AggrFuncExpression(type, field)
   {
     // if (with_brace) {
     //   set_with_brace();
@@ -481,6 +484,11 @@ public:
 
   ExprType type() const override { return ExprType::AGGRFUNC; }
 
+  AttrType value_type() const override{
+    if (field_ != nullptr) return field_->value_type();
+    return value_->value_type();
+  }
+
   const Field &field() const { return field_->field(); }
 
   const FieldExpr &fieldexpr() const { return *field_; }
@@ -493,7 +501,17 @@ public:
 
   RC get_value(const Tuple &tuple, Value &cell) const override;
 
-  std::string get_func_name() const;
+  std::string get_func_name() const {
+    switch (type_) {
+      case AggrFuncType::MAX: return "max";
+      case AggrFuncType::MIN: return "min";
+      case AggrFuncType::SUM: return "sum";
+      case AggrFuncType::AVG: return "avg";
+      case AggrFuncType::AGGR_FUNC_TYPE_NUM: return "count";
+      default: break;
+    }
+  return "unknown_aggr_fun";
+  }
 
   AttrType get_return_type() const;
 

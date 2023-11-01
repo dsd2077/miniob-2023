@@ -52,7 +52,6 @@ public:
 
 public:
   const std::vector<Table *> &tables() const { return tables_; }
-  const std::vector<Field> &  query_fields() const { return query_fields_; }
 
   const std::vector<Expression *> &projects() const { return query_fields_; }
 

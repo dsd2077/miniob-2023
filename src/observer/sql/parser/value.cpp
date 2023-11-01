@@ -356,3 +356,46 @@ bool Value::get_boolean() const
   }
   return false;
 }
+
+const Value Value::add(const Value &left, const Value &right)
+{
+  Value result_cell;
+  if (left.is_null() || right.is_null()) {
+    result_cell.set_null();
+    return result_cell;
+  }
+  if (left.attr_type_ == INTS && right.attr_type_ == INTS) {
+    int result = left.get_int() + right.get_int();
+    result_cell.set_int(result);
+    result_cell.set_type(INTS);
+  } else if (left.attr_type_ == FLOATS && right.attr_type_ == FLOATS){
+    int result = left.get_float() + right.get_float();
+    result_cell.set_float(result);
+    result_cell.set_type(FLOATS);
+  }
+  return result_cell;
+}
+
+const Value Value::div(const Value &left, const Value &right)
+{
+  Value result_cell;
+  if (left.is_null() || right.is_null()) {
+    result_cell.set_null();
+    return result_cell;
+  }
+  float *tmp_left = (float *)(left.data());
+  float *tmp_right = (float *)(right.data());
+  assert(nullptr != tmp_left);
+  assert(nullptr != tmp_right);
+  float result = 0;
+  if (0 == *tmp_right) {      // 除零
+    result_cell.set_type(AttrType::NULLS);
+  } else {
+    result = *tmp_left / *tmp_right;
+    result_cell.set_type(FLOATS);
+    result_cell.set_float(result);
+  }
+  free(tmp_left);
+  free(tmp_right);
+  return result_cell;
+}

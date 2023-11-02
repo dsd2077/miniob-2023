@@ -383,15 +383,13 @@ const Value Value::div(const Value &left, const Value &right)
     result_cell.set_null();
     return result_cell;
   }
-  float *tmp_left = (float *)(left.data());
-  float *tmp_right = (float *)(right.data());
-  assert(nullptr != tmp_left);
-  assert(nullptr != tmp_right);
+  float tmp_left = left.get_float();
+  float tmp_right = right.get_float();
   float result = 0;
-  if (0 == *tmp_right) {      // 除零
+  if (0 == tmp_right) {      // 除零
     result_cell.set_type(AttrType::NULLS);
   } else {
-    result = *tmp_left / *tmp_right;
+    result = tmp_left / tmp_right;
     result_cell.set_type(FLOATS);
     result_cell.set_float(result);
   }

@@ -245,6 +245,8 @@ public:
   static RC create_expression(const Expression *expr, const std::unordered_map<std::string, Table *> &table_map,
       const std::vector<Table *> &tables, Expression *&res_expr, CompOp comp = NO_OP, Db *db = nullptr);
 
+  RC check_sub_query(Expression *expr);
+
   /**
    * 尝试在没有tuple的情况下获取当前表达式的值
    * 在优化的时候，可能会使用到

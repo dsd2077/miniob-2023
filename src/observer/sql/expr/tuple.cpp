@@ -84,7 +84,7 @@ void GroupTuple::do_aggregate_done()
         break;
       }
       case AggrFuncType::AVG: {
-        res = Value::div(res, Value(AttrType::INTS, (char *)&counts_[i]));  // malloc memory in div
+        res = Value::div(res, Value(counts_[i]));  // malloc memory in div
         break;
       }
       default: break;

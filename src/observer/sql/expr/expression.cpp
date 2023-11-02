@@ -181,10 +181,41 @@ RC ComparisonExpr::init(
     LOG_ERROR("BinaryExpression Create Left Expression Failed. RC = %d:%s", rc, strrc(rc));
     return rc;
   }
+  rc = check_sub_query(left_.get());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("ComparisonExpr Create Left SubqueryExpression Failed. RC = %d:%s", rc, strrc(rc));
+    return rc;
+  }
+
   rc = right_->init(tables, table_map, db);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("BinaryExpression Create Right Expression Failed. RC = %d:%s", rc, strrc(rc));
     return rc;
+  }
+  rc = check_sub_query(right_.get());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("ComparisonExpr Create Right SubqueryExpression Failed. RC = %d:%s", rc, strrc(rc));
+    return rc;
+  }
+
+  return RC::SUCCESS;
+}
+
+RC ComparisonExpr::check_sub_query(Expression *expr) {
+  if (ExprType::SUBQUERY != expr->type()) {
+    return RC::SUCCESS;
+  }
+  SubQueryExpression *tmp_expr = dynamic_cast<SubQueryExpression *>(expr);
+  SelectStmt *tmp_stmt = tmp_expr->get_sub_query_stmt();
+  switch (comp_) {
+    case EXISTS_OP:
+    case NOT_EXISTS: break;
+    default: {
+      if (tmp_stmt->projects().size() != 1) {
+        return RC::SQL_SYNTAX;
+      }
+      break;
+    }
   }
   return RC::SUCCESS;
 }
@@ -607,17 +638,6 @@ RC SubQueryExpression::init(const std::vector<Table *> &tables, const std::unord
     LOG_ERROR("SubQueryExpression Create SelectStmt Failed. RC = %d:%s", rc, strrc(rc));
     return rc;
   }
-  // TODO:这一步在做什么？——暂时先不考虑
-  // switch (comp) {
-  //   case EXISTS_OP:
-  //   case NOT_EXISTS:
-  //     break;
-  //   default: {
-  //     if (((SelectStmt *)tmp_stmt)->projects().size() != 1) {      
-  //       return RC::SQL_SYNTAX;
-  //     }
-  //     break;
-  //   }
   sub_stmt_ = static_cast<SelectStmt* >(tmp_stmt);
   return RC::SUCCESS;
 }
@@ -675,7 +695,7 @@ RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unord
 
 RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 
 {
-  if (AggrFuncType::AGGR_FUNC_TYPE_NUM != type_) {
+  if (AggrFuncType::CNT != type_) {
     TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
     return tuple.find_cell(temp, cell);     
   } else {

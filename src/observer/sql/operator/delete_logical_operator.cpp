@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/operator/delete_logical_operator.h"
+#include "sql/expr/expression.h"
 
 DeleteLogicalOperator::DeleteLogicalOperator(Table *table) : table_(table)
 {}

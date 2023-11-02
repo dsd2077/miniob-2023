@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include "sql/operator/logical_operator.h"
+#include "storage/table/table.h"
 
 /**
  * @brief 逻辑算子，用于执行delete语句

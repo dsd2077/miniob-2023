@@ -45,7 +45,8 @@ RC Stmt::create_stmt(Db *db, ParsedSqlNode &sql_node, Stmt *&stmt)
       return DeleteStmt::create(db, sql_node.deletion, stmt);
     }
     case SCF_SELECT: {
-      return SelectStmt::create(db, sql_node.selection, stmt);
+      std::unordered_map<std::string, Table *> table_map;
+      return SelectStmt::create(db, sql_node.selection, table_map, stmt);
     }
 
     case SCF_EXPLAIN: {

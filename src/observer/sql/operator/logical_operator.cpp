@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/operator/logical_operator.h"
+#include "sql/expr/expression.h"
 
 LogicalOperator::~LogicalOperator()
 {}
@@ -21,3 +22,4 @@ void LogicalOperator::add_child(std::unique_ptr<LogicalOperator> oper)
 {
   children_.emplace_back(std::move(oper));
 }
+

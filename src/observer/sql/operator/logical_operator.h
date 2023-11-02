@@ -14,10 +14,11 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include "sql/parser/parse_defs.h"
 #include <memory>
 #include <vector>
-
 #include "sql/expr/expression.h"
+
 
 /**
  * @brief 逻辑算子
@@ -42,6 +43,7 @@ enum class LogicalOperatorType
   UPDATE,
   EXPLAIN,    ///< 查看执行计划
   NONE,       ///< T10加入：用于第一层的记录父算子类型
+  ORDER_BY,   
 };
 
 /**

@@ -18,6 +18,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/operator/logical_operator.h"
 #include "sql/parser/parse_defs.h"
+#include "storage/table/table.h"
 
 /**
  * @brief 插入逻辑算子

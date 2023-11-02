@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/rc.h"
 #include "sql/expr/tuple.h"
 #include "logical_operator.h"
+#include "sql/expr/expression.h"
 
 class Record;
 class TupleCellSpec;
@@ -49,6 +50,7 @@ enum class PhysicalOperatorType
   DELETE,
   INSERT,
   UPDATE,
+  ORDER_BY,
 };
 
 /**
@@ -96,7 +98,16 @@ public:
     return parent_oper_type_;
   }
 
+  void set_parent_tuple(const Tuple *parent_tuple)
+  {
+    parent_tuple_ = parent_tuple;
+    for (auto &child : children_) {
+      child->set_parent_tuple(parent_tuple);
+    }
+  }
+
 protected:
   std::vector<std::unique_ptr<PhysicalOperator>> children_;
   LogicalOperatorType parent_oper_type_; // 父算子的类型
+  const Tuple *parent_tuple_ = nullptr;  // for sub query
 };

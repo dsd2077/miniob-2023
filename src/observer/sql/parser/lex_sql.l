@@ -86,6 +86,7 @@ QUOTE            [\'\"]
 EXIT                                    RETURN_TOKEN(EXIT);
 HELP                                    RETURN_TOKEN(HELP);
 DESC                                    RETURN_TOKEN(DESC);
+ASC                                     RETURN_TOKEN(ASC);
 CREATE                                  RETURN_TOKEN(CREATE);
 DROP                                    RETURN_TOKEN(DROP);
 TABLE                                   RETURN_TOKEN(TABLE);
@@ -113,6 +114,14 @@ JOIN                                    RETURN_TOKEN(JOIN);
 LIKE                                    RETURN_TOKEN(LIKE_T); // T5
 NOT{WHITE_SAPCE}LIKE                    RETURN_TOKEN(NOT_LIKE_T);  // T5
 UNIQUE                                  RETURN_TOKEN(UNIQUE); // T11
+ORDER                                   RETURN_TOKEN(ORDER);
+BY                                      RETURN_TOKEN(BY);
+NOT                                     RETURN_TOKEN(NOT);
+IN                                      RETURN_TOKEN(IN);
+EXISTS                                  RETURN_TOKEN(EXISTS);
+IS                                      RETURN_TOKEN(IS);
+NULL                                    RETURN_TOKEN(NULL_VALUE);
+
 
 INT                                     RETURN_TOKEN(INT_T);    
 DATE                                    RETURN_TOKEN(DATE_T);    // T1修改点

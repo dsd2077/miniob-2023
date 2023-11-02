@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <string>
+#include <vector>
 
 /**
  * @brief 属性的类型
@@ -29,6 +30,7 @@ enum AttrType
   DATES,          /// 坑 DATES必须在FLOATS之前
   FLOATS,         ///< 浮点数类型(4字节)
   BOOLEANS,       ///< boolean类型，当前不是由parser解析出来的，是程序内部使用的
+  NULLS,
 };
 
 const char *attr_type_to_string(AttrType type);
@@ -72,6 +74,30 @@ public:
   void set_date(const char *s);
   void set_date(int date);
   void set_value(const Value &value);
+  bool is_null() const { return AttrType::NULLS == attr_type_; }
+
+  bool in_cells(const std::vector<Value> &cells) const
+  {
+    for (auto &cell : cells) {
+      if (compare(cell) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // return false if is_null and null in cells
+  bool not_in_cells(const std::vector<Value> &cells) const
+  {
+    for (auto &cell : cells) {
+      if (compare(cell) == 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void set_null() { this->attr_type_ = AttrType::NULLS; }
 
   std::string to_string() const;
 

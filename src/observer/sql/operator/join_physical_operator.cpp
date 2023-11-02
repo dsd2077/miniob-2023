@@ -30,7 +30,7 @@ RC NestedLoopJoinPhysicalOperator::open(Trx *trx)
   right_closed_ = true;
   round_done_ = true;
 
-  rc = left_->open(trx);
+  rc = left_->open(trx);      // 为什么这里只调用了left_->open 没有调用right_呢？
   trx_ = trx;
   return rc;
 }

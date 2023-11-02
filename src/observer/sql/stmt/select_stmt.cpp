@@ -90,11 +90,11 @@ void gen_project_name(const Expression *expr, bool is_single_table, std::string 
       if (afexpr->is_param_value()) {
         gen_project_name(afexpr->get_param_value(), is_single_table, result_name);
       } else {
-        const Field &field = afexpr->field();
+        FieldExpr field_expr = afexpr->fieldexpr();
         if (!is_single_table) {   // 多表输出必须使用tablename.fieldname
-          result_name += std::string(field.table_name()) + '.' + std::string(field.field_name());
+          result_name += std::string(field_expr.table_name()) + '.' + std::string(field_expr.field_name());
         } else {
-          result_name += std::string(field.field_name());
+          result_name += std::string(field_expr.field_name());
         }
       }
       result_name += ')';

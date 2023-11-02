@@ -509,7 +509,7 @@ public:
     if (field.with_aggr()) {
       for (size_t i = 0; i < aggr_exprs_.size(); ++i) {
         AggrFuncExpression &expr = *aggr_exprs_[i];
-        TupleCellSpec temp(expr.field().table_name(), expr.field().field_name(),nullptr, expr.get_aggr_func_type());
+        TupleCellSpec temp(expr.fieldexpr().table_name(), expr.fieldexpr().field_name(),nullptr, expr.get_aggr_func_type());
         if (field.equal(temp) && expr.get_aggr_func_type() == field.get_aggr_type()) {
           cell = aggr_results_[i];
           LOG_INFO("Field is found in aggr_exprs");

@@ -181,6 +181,12 @@ const char *Value::data() const
     case CHARS: {
       return str_value_.c_str();
     } break;
+    case FLOATS: {
+      return (const char *)&num_value_.float_value_;
+    } break;
+    case BOOLEANS: {
+      return (const char *)&num_value_.bool_value_;
+    } break;
     default: {
       return (const char *)&num_value_;
     } break;
@@ -245,10 +251,12 @@ int Value::compare(const Value &other) const
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
   } else if (this->attr_type_ == CHARS) {
     float str_float = common::stringToNumber(str_value_);
-    return common::compare_float((void *)&str_float, (void *)other.data());
+    Value temp = Value(str_float);
+    return temp.compare(other);
   } else if (other.attr_type_ == CHARS) {
     float str_float = common::stringToNumber(other.str_value_);
-    return common::compare_float((void *)data(), (void *)&str_float);
+    Value temp = Value(str_float);
+    return compare(temp);
   }
   LOG_WARN("not supported");
   return -1;  // TODO return rc?

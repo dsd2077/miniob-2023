@@ -105,9 +105,15 @@ class FieldExpr : public Expression
 public:
   FieldExpr() = default;
   FieldExpr(const Table *table, const FieldMeta *field) : field_(table, field)
-  {}
+  {
+    table_name_ = table->name();
+    field_name_ = field->name();
+  }
   FieldExpr(const Field &field) : field_(field)
-  {}
+  {
+    table_name_ = field.table_name();
+    field_name_ = field.field_name();
+  }
   FieldExpr(const std::string &field_name, std::string table_name = "")
       :field_name_(field_name), table_name_(table_name)
   {}
@@ -124,18 +130,18 @@ public:
 
   const Field &field() const { return field_; }
 
-  const char *table_name() const { return field_.table_name(); }
+  const char *table_name() const { return table_name_.c_str(); }
 
   const Table *table() const { return field_.table(); }
 
-  const char *field_name() const { return field_.field_name(); }
+  const char *field_name() const { return field_name_.c_str(); }
 
   RC get_value(const Tuple &tuple, Value &value) const override;
 
 
 private:
   Field field_;
-  std::string table_name_;
+  std::string table_name_;      // 进行语法解析时给出的
   std::string field_name_;
 };
 
@@ -528,7 +534,7 @@ public:
 
 private:
   AggrFuncType type_;
-  FieldExpr *field_ = nullptr;  // don't own this. keep const.
-  ValueExpr *value_ = nullptr;  // for count(1) count(*) count("xxx") output
+  FieldExpr *field_ = nullptr;  // MAX(field_name)  MAX(table_name.field_name)  COUNT(field_name) COUNT(table_name.field_name)
+  ValueExpr *value_ = nullptr;  // count(*) 
 };
 

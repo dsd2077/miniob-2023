@@ -112,6 +112,7 @@ INNER                                   RETURN_TOKEN(INNER);
 JOIN                                    RETURN_TOKEN(JOIN);
 LIKE                                    RETURN_TOKEN(LIKE_T); // T5
 NOT{WHITE_SAPCE}LIKE                    RETURN_TOKEN(NOT_LIKE_T);  // T5
+UNIQUE                                  RETURN_TOKEN(UNIQUE); // T11
 
 INT                                     RETURN_TOKEN(INT_T);    
 DATE                                    RETURN_TOKEN(DATE_T);    // T1修改点

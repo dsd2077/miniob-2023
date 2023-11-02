@@ -21,7 +21,7 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
 }
 
 // T10修改：适应多列联合索引
-RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &field_meta)
+RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &field_meta, bool allow_repeat)
 {
   if (inited_) {
     LOG_WARN("Failed to create index due to the index has been created before. file_name:%s, index:%s",
@@ -41,7 +41,7 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, st
     attrs_lengths.emplace_back(field_meta[i].len());
     attrs_offsets.emplace_back(field_meta[i].offset());
   }
-  RC rc = index_handler_.create(file_name, attrs, attrs_lengths, attrs_offsets);  // 这里真正地创建索引文件，这里调用的是B+树句柄的create函数
+  RC rc = index_handler_.create(file_name, attrs, attrs_lengths, attrs_offsets, -1, -1, allow_repeat);  // 这里真正地创建索引文件，这里调用的是B+树句柄的create函数
   if (RC::SUCCESS != rc) {
     LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, rc:%s",
         file_name,
@@ -129,7 +129,8 @@ RC BplusTreeIndex::close()
 RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
 {
   // T10修改：这里需要将record中真正对应索引的字段取出，组成B+树中真正的Key
-  
+  // T11修改：这里需要加入对重复数据的判断，在插入过程中如果遇到重复（仅仅指key中除了rid的部分）就回滚，插入失败
+
   // return index_handler_.insert_entry(record + field_meta_.offset(), rid);
   return index_handler_.insert_entry(record, rid);
 }

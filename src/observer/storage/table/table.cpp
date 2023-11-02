@@ -483,6 +483,97 @@ RC Table::create_index(Trx *trx, std::vector<FieldMeta> &field_meta, const char 
   return rc;
 }
 
+// 创建唯一索引实现
+RC Table::create_unique_index(Trx *trx, std::vector<FieldMeta> &fields_metas, const char *index_name)
+{
+  if(common::is_blank(index_name) || fields_metas.size() == 0) {
+    LOG_INFO("Invalid input arguments, table name is %s, index_name is blank or attribute_name is blank", name());
+    return RC::INVALID_ARGUMENT;
+  }
+
+  IndexMeta new_index_meta;
+  new_index_meta.init(index_name, fields_metas);
+  new_index_meta.set_type(IndexType::UNIQUE_INDEX); // 设置：唯一索引
+
+  BplusTreeIndex *tree_index = new BplusTreeIndex();  // 创建B+树索引
+  std::string index_file_name = table_index_file(base_dir_.c_str(), name(), index_name);
+  RC rc = tree_index->create(index_file_name.c_str(), new_index_meta, fields_metas, false);   // 唯一索引：不允许重复键值
+  if (rc != RC::SUCCESS) {
+    delete tree_index;
+    LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file_name.c_str(), rc, strrc(rc));
+    return rc;
+  }
+
+  // 遍历当前的所有数据，插入这个索引
+  RecordFileScanner scanner;
+  rc = get_record_scanner(scanner, trx, true/*readonly*/);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", 
+             name(), index_name, strrc(rc));
+    return rc;
+  }
+  // 以下不变，题目中提到不会在已有重复数据的列上建立索引，所以这里插入已有records不会出现重复
+  Record record;
+  while (scanner.has_next()) {
+    rc = scanner.next(record);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to scan records while creating index. table=%s, index=%s, rc=%s",
+               name(), index_name, strrc(rc));
+      return rc;
+    }
+    rc = tree_index->insert_entry(record.data(), &record.rid()); // 将record插入索引
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to insert record into index while creating index. table=%s, index=%s, rc=%s",
+               name(), index_name, strrc(rc));
+      return rc;         
+    }
+  }
+  scanner.close_scan();
+  LOG_INFO("inserted all records into new index. table=%s, index=%s", name(), index_name);
+  
+  indexes_.push_back(tree_index);
+
+  /// 接下来将这个索引放到表的元数据中
+  TableMeta new_table_meta(table_meta_);
+  rc = new_table_meta.add_index(new_index_meta);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to add index (%s) on table (%s). error=%d:%s", index_name, name(), rc, strrc(rc));
+    return rc;
+  }
+
+  /// 内存中有一份元数据，磁盘文件也有一份元数据。修改磁盘文件时，先创建一个临时文件，写入完成后再rename为正式文件
+  /// 这样可以防止文件内容不完整
+  // 创建元数据临时文件
+  std::string tmp_file = table_meta_file(base_dir_.c_str(), name()) + ".tmp";
+  std::fstream fs;
+  fs.open(tmp_file, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+  if (!fs.is_open()) {
+    LOG_ERROR("Failed to open file for write. file name=%s, errmsg=%s", tmp_file.c_str(), strerror(errno));
+    return RC::IOERR_OPEN;  // 创建索引中途出错，要做还原操作
+  }
+  if (new_table_meta.serialize(fs) < 0) {
+    LOG_ERROR("Failed to dump new table meta to file: %s. sys err=%d:%s", tmp_file.c_str(), errno, strerror(errno));
+    return RC::IOERR_WRITE;
+  }
+  fs.close();
+
+  // 覆盖原始元数据文件
+  std::string meta_file = table_meta_file(base_dir_.c_str(), name());
+  int ret = rename(tmp_file.c_str(), meta_file.c_str());
+  if (ret != 0) {
+    LOG_ERROR("Failed to rename tmp meta file (%s) to normal meta file (%s) while creating index (%s) on table (%s). "
+              "system error=%d:%s",
+              tmp_file.c_str(), meta_file.c_str(), index_name, name(), errno, strerror(errno));
+    return RC::IOERR_WRITE;
+  }
+
+  table_meta_.swap(new_table_meta);
+
+  LOG_INFO("Successfully added a new index (%s) on the table (%s)", index_name, name());
+  return rc;
+
+}
+
 // 创建唯一索引实现；这里需要和存储部分适配
 // RC Table::create_unique_index(Trx *trx, std::vector<const FieldMeta*> &fields_metas, const char *index_name)
 // {

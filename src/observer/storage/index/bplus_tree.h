@@ -156,15 +156,16 @@ class KeyComparator
 {
 public:
 
-  void init(AttrType type, int length)
+  void init(AttrType type, int length, bool allow_repeat = true)
   {
     attrs_comparator_.init(type, length);
     attr_length = length;
     entry_length = length + sizeof(RID);
+    allow_repeat_ = allow_repeat;
   }
 
   // 重载：多列索引初始化
-  void init(std::vector<AttrType> &types, std::vector<int> lengths)
+  void init(std::vector<AttrType> &types, std::vector<int> lengths, bool allow_repeat = true)
   {
     attrs_comparator_.init(types, lengths);
     for(int i = 0 ; i < types.size() ; i ++ ) {
@@ -172,6 +173,7 @@ public:
       entry_length += lengths[i];
     }
     entry_length += sizeof(RID);
+    allow_repeat_ = allow_repeat;
   }
 
   const AttrsComparator &attrs_comparator() const
@@ -186,8 +188,13 @@ public:
     if(result != 0) {
       return result;
     }
-
-    // 如果key完全相等，则比较rid（真的合适吗，为什么要比较rid呢？因为这个b+树写得很不成功，节点内在获取key实际上获取了整个entry的内容）
+    // T11: 这里key值一样，要检查是否允许repeat
+    if(!allow_repeat_) {
+      // 不允许重复，则不比较剩下的rid部分了，直接返回0，在二分查找中就会认为两个key是完全一样的，这会导致insert_entry_to_leaf_node中的exist为true
+      return 0;
+    }
+    
+    // 在允许key值重复的情况下，如果key完全相等，则比较key中的rid部分
     const RID *rid1 = (const RID *)(v1 + attr_length);
     const RID *rid2 = (const RID *)(v2 + attr_length);
     return RID::compare(rid1, rid2);
@@ -198,6 +205,7 @@ private:
   AttrsComparator attrs_comparator_;  // 联合索引比较函数
   int attr_length;
   int entry_length;
+  bool allow_repeat_;  // 是否允许重复
 };
 
 /**
@@ -378,6 +386,7 @@ struct IndexFileHeader
   int attr_lens[256];
   int attr_offsets[256];  // 每个字段相对于记录头的偏移量
   int attr_num; // 属性数量
+  bool allow_repeat = true;  // T11：是否允许((key, rid), rid)中key重复，默认允许
 
   const std::string to_string()
   {
@@ -640,14 +649,16 @@ public:
             AttrType attr_type, 
             int attr_length, 
             int internal_max_size = -1, 
-            int leaf_max_size = -1);
+            int leaf_max_size = -1,
+            bool allow_repeat = true);
 
   RC create(const char *file_name,
             std::vector<AttrType> attrs_types,
             std::vector<int> attrs_lengths,
             std::vector<int> attrs_offsets,
             int internal_max_size = -1,
-            int leaf_max_size = -1);
+            int leaf_max_size = -1,
+            bool allow_repeat = true);
 
   /**
    * 打开名为fileName的索引文件。
@@ -752,6 +763,7 @@ protected:
   DiskBufferPool *disk_buffer_pool_ = nullptr;
   bool            header_dirty_ = false; // 
   IndexFileHeader file_header_;
+  // bool            allow_key_repeat_ = true;  // T11：是否允许除了rid以外的key部分重复？默认为“允许”
 
   // 在调整根节点时，需要加上这个锁。
   // 这个锁可以使用递归读写锁，但是这里偷懒先不改

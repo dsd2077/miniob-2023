@@ -827,7 +827,7 @@ RC BplusTreeHandler::sync()
 //   return RC::SUCCESS;
 // }
 
-RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size, int leaf_max_size)
+RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_length, int internal_max_size, int leaf_max_size, bool allow_repeat)
 {
   std::vector<AttrType> attr_types;
   std::vector<int> attr_lengths;
@@ -835,11 +835,11 @@ RC BplusTreeHandler::create(const char *file_name, AttrType attr_type, int attr_
   attr_types.emplace_back(attr_type);
   attr_lengths.emplace_back(attr_length);
   attr_offsets.emplace_back(0);
-  return create(file_name, attr_types, attr_lengths, attr_offsets, internal_max_size, leaf_max_size);
+  return create(file_name, attr_types, attr_lengths, attr_offsets, internal_max_size, leaf_max_size, allow_repeat);
 }
 
 RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_types, std::vector<int> attr_lengths, std::vector<int> attr_offsets, 
-    int internal_max_size /* = -1*/, int leaf_max_size /* = -1 */)
+    int internal_max_size /* = -1*/, int leaf_max_size /* = -1 */, bool allow_repeat /* = true*/)
 {
   BufferPoolManager &bpm = BufferPoolManager::instance();
   RC rc = bpm.create_file(file_name);
@@ -903,6 +903,7 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
   file_header->root_page = BP_INVALID_PAGE_NUM;
   std::cout << "index attr num : " << attr_lengths.size() << std::endl; 
   file_header->attr_num = attr_lengths.size();
+  file_header->allow_repeat = allow_repeat;  // T11：是否允许((key, rid), rid)中的key重复
 
   header_frame->mark_dirty();
 
@@ -925,7 +926,7 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
     return RC::NOMEM;
   }
 
-  key_comparator_.init(attr_types, attr_lengths);
+  key_comparator_.init(attr_types, attr_lengths, allow_repeat);
   key_printer_.init(attr_types, attr_lengths);
 
   this->sync();
@@ -989,7 +990,7 @@ RC BplusTreeHandler::open(const char *file_name)
   // close old page_handle
   disk_buffer_pool->unpin_page(frame);
 
-  key_comparator_.init(attr_type_list, attr_lengths);
+  key_comparator_.init(attr_type_list, attr_lengths, file_header_.allow_repeat);
   key_printer_.init(attr_type_list, attr_lengths);
   LOG_INFO("Successfully open index %s", file_name);
   return RC::SUCCESS;

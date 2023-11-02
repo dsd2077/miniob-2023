@@ -216,7 +216,7 @@ struct CreateUniqueIndexSqlNode
 {
   std::string index_name;                     ///< Index name
   std::string relation_name;                  ///< Relation name
-  std::vector<std::string> attributes_names;  ///< Attributes names
+  std::vector<RelAttrSqlNode> attributes_names;  ///< Attributes names
 };
 
 /**

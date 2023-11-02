@@ -46,7 +46,7 @@ RC CreateIndexStmt::create(Db *db, const CreateIndexSqlNode &create_index, Stmt 
   }
   std::vector<FieldMeta> index_fields;
   table->table_meta().fields_by_attrs(index_fields, attrs_names);
-  if(index_fields.size() == 0 || index_fields.size() != attrs_names.size()) {
+  if(index_fields.size() != attrs_names.size()) {
     LOG_WARN("no such field in table. db=%s, table=%s, field name=%s ...", 
              db->name(), table_name, create_index.attributes_names[0].attribute_name.c_str());
     return RC::SCHEMA_FIELD_NOT_EXIST;   

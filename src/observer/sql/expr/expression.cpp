@@ -695,13 +695,8 @@ RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unord
 
 RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 
 {
-  if (AggrFuncType::CNT != type_) {
-    TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
-    return tuple.find_cell(temp, cell);     
-  } else {
-    TupleCellSpec temp("", "", nullptr, type_);
-    return tuple.find_cell(temp, cell);     
-  }
+  TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
+  return tuple.find_cell(temp, cell);
 }
 
 void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFuncExpression *> &aggrfunc_exprs) 

@@ -210,9 +210,9 @@ RC BplusTreeIndexScanner::open(
   return tree_scanner_.open(left_key, left_len, left_inclusive, right_key, right_len, right_inclusive);
 }
 
-RC BplusTreeIndexScanner::next_entry(RID *rid)
+RC BplusTreeIndexScanner::next_entry(RID *rid, int op_type)
 {
-  return tree_scanner_.next_entry(*rid);
+  return tree_scanner_.next_entry(*rid, op_type);
 }
 
 RC BplusTreeIndexScanner::destroy()

@@ -1563,7 +1563,7 @@ RC BplusTreeHandler::get_entry(const char *user_key, int key_len, std::list<RID>
   }
 
   RID rid;
-  while ((rc = scanner.next_entry(rid)) == RC::SUCCESS) {
+  while ((rc = scanner.next_entry(rid, 0)) == RC::SUCCESS) {
     rids.push_back(rid);
   }
 
@@ -2012,7 +2012,7 @@ bool BplusTreeScanner::touch_end()  // 检查当前游标iter_index_所在的key
   return compare_result > 0;
 }
 
-RC BplusTreeScanner::next_entry(RID &rid)
+RC BplusTreeScanner::next_entry(RID &rid, int op_type)
 {
   if (nullptr == current_frame_) {
     return RC::RECORD_EOF;
@@ -2024,7 +2024,8 @@ RC BplusTreeScanner::next_entry(RID &rid)
     return RC::SUCCESS;
   }
 
-  iter_index_++;
+  if(!op_type)
+    iter_index_++;
 
   LeafIndexNodeHandler node(tree_handler_.file_header_, current_frame_);
   if (iter_index_ < node.size()) {
@@ -2061,7 +2062,7 @@ RC BplusTreeScanner::next_entry(RID &rid)
 
   latch_memo_.release_to(memo_point);
   iter_index_ = -1; // `next` will add 1
-  return next_entry(rid);
+  return next_entry(rid, op_type);
 }
 
 RC BplusTreeScanner::close()

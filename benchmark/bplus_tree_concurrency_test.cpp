@@ -164,7 +164,7 @@ public:
     } else {
       RID      rid;
       uint32_t count = 0;
-      while (RC::RECORD_EOF != (rc = scanner.next_entry(rid))) {
+      while (RC::RECORD_EOF != (rc = scanner.next_entry(rid, 0))) {
         count++;
       }
 

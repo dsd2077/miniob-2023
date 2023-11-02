@@ -76,7 +76,7 @@ RC OptimizeStage::generate_physical_plan(
     unique_ptr<LogicalOperator> &logical_operator, unique_ptr<PhysicalOperator> &physical_operator)
 {
   RC rc = RC::SUCCESS;
-  rc = physical_plan_generator_.create(*logical_operator, physical_operator);
+  rc = physical_plan_generator_.create(*logical_operator, physical_operator, LogicalOperatorType::NONE);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to create physical operator. rc=%s", strrc(rc));
   }

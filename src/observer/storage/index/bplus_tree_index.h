@@ -62,7 +62,7 @@ public:
   BplusTreeIndexScanner(BplusTreeHandler &tree_handle);
   ~BplusTreeIndexScanner() noexcept override;
 
-  RC next_entry(RID *rid) override;
+  RC next_entry(RID *rid, int op_type) override;
   RC destroy() override;
 
   RC open(const char *left_key, int left_len, bool left_inclusive, const char *right_key, int right_len,

@@ -789,7 +789,7 @@ public:
   RC open(const char *left_user_key, int left_len, bool left_inclusive, 
           const char *right_user_key, int right_len, bool right_inclusive);
 
-  RC next_entry(RID &rid);
+  RC next_entry(RID &rid, int op_type = 0);
 
   RC close();
 

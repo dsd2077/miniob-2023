@@ -516,7 +516,7 @@ TEST(test_bplus_tree, test_chars)
   ASSERT_EQ(rc, RC::SUCCESS);
 
   int count = 0;
-  while (RC::SUCCESS == (rc = scanner.next_entry(rid))) {
+  while (RC::SUCCESS == (rc = scanner.next_entry(rid, 0))) {
     count++;
   }
   scanner.close();

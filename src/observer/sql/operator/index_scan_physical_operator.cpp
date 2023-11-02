@@ -104,7 +104,8 @@ RC IndexScanPhysicalOperator::next()
   record_page_handler_.cleanup();
 
   bool filter_result = false;
-  while (RC::SUCCESS == (rc = index_scanner_->next_entry(&rid))) {
+  int op_type = parent_oper_type_ == LogicalOperatorType::DELETE ? 1 : 0;
+  while (RC::SUCCESS == (rc = index_scanner_->next_entry(&rid, op_type))) {
     rc = record_handler_->get_record(record_page_handler_, &rid, readonly_, &current_record_);
     if (rc != RC::SUCCESS) {
       return rc;

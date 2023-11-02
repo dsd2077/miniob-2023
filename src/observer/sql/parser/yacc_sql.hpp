@@ -63,54 +63,6 @@ extern int yydebug;
     CALC = 264,                    /* CALC  */
     SELECT = 265,                  /* SELECT  */
     DESC = 266,                    /* DESC  */
-<<<<<<< HEAD
-    SHOW = 267,                    /* SHOW  */
-    SYNC = 268,                    /* SYNC  */
-    INSERT = 269,                  /* INSERT  */
-    DELETE = 270,                  /* DELETE  */
-    UPDATE = 271,                  /* UPDATE  */
-    LBRACE = 272,                  /* LBRACE  */
-    RBRACE = 273,                  /* RBRACE  */
-    COMMA = 274,                   /* COMMA  */
-    TRX_BEGIN = 275,               /* TRX_BEGIN  */
-    TRX_COMMIT = 276,              /* TRX_COMMIT  */
-    TRX_ROLLBACK = 277,            /* TRX_ROLLBACK  */
-    INT_T = 278,                   /* INT_T  */
-    STRING_T = 279,                /* STRING_T  */
-    FLOAT_T = 280,                 /* FLOAT_T  */
-    DATE_T = 281,                  /* DATE_T  */
-    HELP = 282,                    /* HELP  */
-    EXIT = 283,                    /* EXIT  */
-    DOT = 284,                     /* DOT  */
-    INTO = 285,                    /* INTO  */
-    VALUES = 286,                  /* VALUES  */
-    FROM = 287,                    /* FROM  */
-    WHERE = 288,                   /* WHERE  */
-    AND = 289,                     /* AND  */
-    SET = 290,                     /* SET  */
-    ON = 291,                      /* ON  */
-    LOAD = 292,                    /* LOAD  */
-    DATA = 293,                    /* DATA  */
-    INFILE = 294,                  /* INFILE  */
-    EXPLAIN = 295,                 /* EXPLAIN  */
-    EQ = 296,                      /* EQ  */
-    LT = 297,                      /* LT  */
-    GT = 298,                      /* GT  */
-    LE = 299,                      /* LE  */
-    GE = 300,                      /* GE  */
-    NE = 301,                      /* NE  */
-    INNER = 302,                   /* INNER  */
-    JOIN = 303,                    /* JOIN  */
-    LIKE_T = 304,                  /* LIKE_T  */
-    NOT_LIKE_T = 305,              /* NOT_LIKE_T  */
-    UNIQUE = 306,                  /* UNIQUE  */
-    NUMBER = 307,                  /* NUMBER  */
-    FLOAT = 308,                   /* FLOAT  */
-    ID = 309,                      /* ID  */
-    DATE = 310,                    /* DATE  */
-    SSS = 311,                     /* SSS  */
-    UMINUS = 312                   /* UMINUS  */
-=======
     ASC = 267,                     /* ASC  */
     SHOW = 268,                    /* SHOW  */
     SYNC = 269,                    /* SYNC  */
@@ -159,13 +111,13 @@ extern int yydebug;
     NULL_VALUE = 312,              /* NULL_VALUE  */
     LIKE_T = 313,                  /* LIKE_T  */
     NOT_LIKE_T = 314,              /* NOT_LIKE_T  */
-    NUMBER = 315,                  /* NUMBER  */
-    FLOAT = 316,                   /* FLOAT  */
-    ID = 317,                      /* ID  */
-    DATE = 318,                    /* DATE  */
-    SSS = 319,                     /* SSS  */
-    UMINUS = 320                   /* UMINUS  */
->>>>>>> main
+    UNIQUE = 315,                  /* UNIQUE  */
+    NUMBER = 316,                  /* NUMBER  */
+    FLOAT = 317,                   /* FLOAT  */
+    ID = 318,                      /* ID  */
+    DATE = 319,                    /* DATE  */
+    SSS = 320,                     /* SSS  */
+    UMINUS = 321                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -174,11 +126,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-<<<<<<< HEAD
-#line 112 "yacc_sql.y"
-=======
-#line 119 "yacc_sql.y"
->>>>>>> main
+#line 120 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   Value *                           value;
@@ -201,11 +149,7 @@ union YYSTYPE
   OrderByNode *                     order_by_item;
   std::vector<OrderByNode> *        order_by_list;
 
-<<<<<<< HEAD
-#line 143 "yacc_sql.hpp"
-=======
-#line 152 "yacc_sql.hpp"
->>>>>>> main
+#line 153 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

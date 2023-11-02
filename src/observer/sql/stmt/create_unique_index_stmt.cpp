@@ -1,5 +1,3 @@
-#pragma once
-
 #include "sql/stmt/create_unique_index_stmt.h"
 #include "storage/table/table.h"
 #include "storage/db/db.h"

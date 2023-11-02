@@ -75,7 +75,7 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
       return create_plan(static_cast<UpdateLogicalOperator &>(logical_operator), oper, parent_oper_type);
     } break;
     case LogicalOperatorType::ORDER_BY: {
-      return create_plan(static_cast<OrderByLogicalOperator &>(logical_operator), oper);
+      return create_plan(static_cast<OrderByLogicalOperator &>(logical_operator), oper, parent_oper_type);
     } break;
     case LogicalOperatorType::EXPLAIN: {
       return create_plan(static_cast<ExplainLogicalOperator &>(logical_operator), oper, parent_oper_type);
@@ -208,10 +208,10 @@ RC PhysicalPlanGenerator::create_plan(PredicateLogicalOperator &pred_oper, uniqu
     ConjunctionExpr *temp = dynamic_cast<ConjunctionExpr *>(expression.get());
     assert(temp != nullptr);
     for (auto &expr : temp->children()) {  // child为ComparisonExpr
-      create_plan_for_subquery(expr);
+      create_plan_for_subquery(expr, parent_oper_type);
     }
   } else if (ExprType::COMPARISON == expression->type()) {
-    create_plan_for_subquery(expression);
+    create_plan_for_subquery(expression, parent_oper_type);
   }
 
   oper = unique_ptr<PhysicalOperator>(new PredicatePhysicalOperator(std::move(expression)));
@@ -220,14 +220,14 @@ RC PhysicalPlanGenerator::create_plan(PredicateLogicalOperator &pred_oper, uniqu
   return rc;
 }
 
-RC PhysicalPlanGenerator::create_plan_for_subquery(std::unique_ptr<Expression> &expr) {
+RC PhysicalPlanGenerator::create_plan_for_subquery(std::unique_ptr<Expression> &expr, LogicalOperatorType parent_oper_type) {
   RC rc = RC::SUCCESS;
   // process sub query
   if (ExprType::SUBQUERY == expr->type()) {
     SubQueryExpression *         sub_query_expr = dynamic_cast<SubQueryExpression *>(expr.get());
     unique_ptr<PhysicalOperator> physical_operator;
     ProjectLogicalOperator *logical_oper = dynamic_cast<ProjectLogicalOperator *>(sub_query_expr->get_logical_oper());
-    if (RC::SUCCESS != (rc = create_plan(*logical_oper, physical_operator))) {
+    if (RC::SUCCESS != (rc = create_plan(*logical_oper, physical_operator, parent_oper_type))) {
       return rc;
     }
     assert(nullptr != physical_operator);
@@ -237,10 +237,10 @@ RC PhysicalPlanGenerator::create_plan_for_subquery(std::unique_ptr<Expression> &
     ComparisonExpr *temp = dynamic_cast<ComparisonExpr *>(expr.get());
     assert(temp != nullptr);
 
-    if (RC::SUCCESS != (rc = create_plan_for_subquery(temp->left()))) {
+    if (RC::SUCCESS != (rc = create_plan_for_subquery(temp->left(), parent_oper_type))) {
       return rc;
     }
-    return create_plan_for_subquery(temp->right());
+    return create_plan_for_subquery(temp->right(), parent_oper_type);
   }
   return RC::SUCCESS;
 }
@@ -408,7 +408,7 @@ RC PhysicalPlanGenerator::create_plan(CalcLogicalOperator &logical_oper, std::un
   return rc;
 }
 
-RC PhysicalPlanGenerator::create_plan(OrderByLogicalOperator &order_by_oper, std::unique_ptr<PhysicalOperator> &oper) {
+RC PhysicalPlanGenerator::create_plan(OrderByLogicalOperator &order_by_oper, std::unique_ptr<PhysicalOperator> &oper, LogicalOperatorType parent_oper_type) {
   vector<unique_ptr<LogicalOperator>> &child_opers = order_by_oper.children();
 
   unique_ptr<PhysicalOperator> child_physical_oper;
@@ -416,7 +416,7 @@ RC PhysicalPlanGenerator::create_plan(OrderByLogicalOperator &order_by_oper, std
   RC rc = RC::SUCCESS;
   if (!child_opers.empty()) {
     LogicalOperator *child_oper = child_opers.front().get();
-    rc = create(*child_oper, child_physical_oper);
+    rc = create(*child_oper, child_physical_oper, parent_oper_type);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to create physical operator. rc=%s", strrc(rc));
       return rc;

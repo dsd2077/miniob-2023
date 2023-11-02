@@ -8,10 +8,10 @@
 #include <vector>
 
 #include "sql/stmt/stmt.h"
+#include "storage/field/field_meta.h"
 
 struct CreateUniqueIndexSqlNode;
 class Table;
-class FieldMeta;
 
 class CreateUniqueIndexStmt: public Stmt
 {

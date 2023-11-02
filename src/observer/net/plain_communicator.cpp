@@ -189,7 +189,9 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   ProjectPhysicalOperator *project_oper = dynamic_cast<ProjectPhysicalOperator *>(oper.get());
   std::string header;
   get_tuple_header(project_oper, header);
-  if (rc != RC::SUCCESS){
+  rc = writer_->writen(header.c_str(), header.size());
+  if (OB_FAIL(rc)) {
+    LOG_WARN("failed to send data to client. err=%s", strerror(errno));
     sql_result->close();
     return rc;
   }
@@ -216,10 +218,6 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       new_line += cell_str;
     }
     new_line += '\n';
-    if (header != "") {
-      writer_->writen(header.c_str(), header.size());
-      header = "";
-    }
     rc = writer_->writen(new_line.c_str(), new_line.size());
     if (OB_FAIL(rc)) {
       LOG_WARN("failed to send data to client. err=%s", strerror(errno));
@@ -232,10 +230,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     rc = RC::SUCCESS;
   }
 
-  if (project_oper == nullptr || rc != RC::SUCCESS) {
-    // 除了select之外，其它的消息通常不会通过operator来返回结果，表头和行数据都是空的
-    // 这里针对这种情况做特殊处理，当表头和行数据都是空的时候，就返回处理的结果
-    // 可能是insert/delete等操作，不直接返回给客户端数据，这里把处理结果返回给客户端
+  if (header == "") {
     RC rc_close = sql_result->close();
     if (rc == RC::SUCCESS) {
       rc = rc_close;
@@ -243,13 +238,6 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     sql_result->set_return_code(rc);
     return write_state(event, need_disconnect);
   } else {
-    rc = writer_->writen(send_message_delimiter_.data(), send_message_delimiter_.size());
-    if (OB_FAIL(rc)) {
-      LOG_ERROR("Failed to send data back to client. ret=%s, error=%s", strrc(rc), strerror(errno));
-      sql_result->close();
-      return rc;
-    }
-
     need_disconnect = false;
   }
 

@@ -41,6 +41,106 @@ static void wildcard_fields(Table *table, std::vector<Expression*> &field_metas)
   }
 }
 
+void gen_project_name(const Expression *expr, bool is_single_table, std::string &result_name)
+{
+
+  if (!expr->name().empty()) {
+    result_name = expr->name();
+    return;
+  }
+
+  // if (expr->with_brace()) {
+  //   result_name += '(';
+  // }
+  switch (expr->type()) {
+    case ExprType::FIELD: {
+      FieldExpr *fexpr = (FieldExpr *)expr;
+      const Field &field = fexpr->field();
+      if (!is_single_table) {
+        result_name += std::string(field.table_name()) + '.' + std::string(field.field_name());
+      } else {
+        result_name += std::string(field.field_name());
+      }
+      break;
+    }
+    case ExprType::VALUE: {
+      ValueExpr *vexpr = (ValueExpr *)expr;
+      Value cell;
+      vexpr->get_value(cell);
+      std::stringstream ss;
+      std::string str = cell.to_string();
+      result_name += str;
+      break;
+    }
+    // case ExprType::ARITHMETIC: {
+    //   ArithmeticExpr *bexpr = (ArithmeticExpr *)expr;
+    //   if (bexpr->is_minus()) {
+    //     result_name += '-';
+    //   } else {
+    //     gen_project_name(bexpr->get_left(), is_single_table, result_name);
+    //     result_name += bexpr->get_op_char();
+    //   }
+    //   gen_project_name(bexpr->get_right(), is_single_table, result_name);
+    //   break;
+    // }
+    case ExprType::AGGRFUNC: {
+      AggrFuncExpression *afexpr = (AggrFuncExpression *)expr;
+      result_name += afexpr->get_func_name();
+      result_name += '(';
+      if (afexpr->is_param_value()) {
+        gen_project_name(afexpr->get_param_value(), is_single_table, result_name);
+      } else {
+        const Field &field = afexpr->field();
+        if (!is_single_table) {   // 多表输出必须使用tablename.fieldname
+          result_name += std::string(field.table_name()) + '.' + std::string(field.field_name());
+        } else {
+          result_name += std::string(field.field_name());
+        }
+      }
+      result_name += ')';
+      break;
+    }
+    // case ExprType::FUNC: {
+    //   FuncExpression *fexpr = (FuncExpression *)expr;
+    //   switch (fexpr->get_func_type()) {
+    //     case FUNC_LENGTH: {
+    //       result_name += "length(";
+    //       gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //       result_name += ")";
+    //       break;
+    //     }
+    //     case FUNC_ROUND: {
+    //       result_name += "round(";
+    //       if (fexpr->get_param_size() > 1) {
+    //         gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //         result_name += ",";
+    //         gen_project_name(fexpr->get_params()[1], is_single_table, result_name);
+    //       } else {
+    //         gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //       }
+    //       result_name += ")";
+    //       break;
+    //     }
+    //     case FUNC_DATE_FORMAT: {
+    //       result_name += "date_format(";
+    //       gen_project_name(fexpr->get_params()[0], is_single_table, result_name);
+    //       result_name += ",";
+    //       gen_project_name(fexpr->get_params()[1], is_single_table, result_name);
+    //       result_name += ")";
+    //       break;
+    //     }
+    //     default:
+    //       break;
+    //   }
+    // }
+    default:
+      break;
+  }
+  // if (expr->with_brace()) {
+  //   result_name += ')';
+  // }
+}
+
 RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unordered_map<std::string, Table *> &parent_table_map, Stmt *&stmt)
 {
   if (nullptr == db) {
@@ -154,13 +254,17 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
       }
     } else {    // expression
       Expression *expr = relation_attr.expr;
-      // RC rc = Expression::create_expression(relation_attr.expr, table_map, tables, res_project);
       RC rc = expr->init(tables, table_map, db);      
       if (rc != RC::SUCCESS) {
         return rc;
       }
+
       if (relation_attr.alias != "") {
         expr->set_name(relation_attr.alias);
+      } else {
+        std::string project_name;
+        gen_project_name(expr, tables.size() == 1, project_name);
+        expr->set_name(project_name);
       }
       query_fields.emplace_back(expr);
     }
@@ -208,7 +312,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
   if (select_sql.conditions != nullptr) {
-    rc = FilterStmt::create(db, default_table, &table_map, select_sql.conditions, filter_stmt);
+    rc = FilterStmt::create(db, default_table, &temp_table_map, select_sql.conditions, filter_stmt);
   }
   if (rc != RC::SUCCESS) {
     LOG_WARN("cannot construct filter stmt");

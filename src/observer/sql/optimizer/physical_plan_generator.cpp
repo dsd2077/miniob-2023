@@ -335,7 +335,11 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
   unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator);    
   for (auto &child_oper : child_opers) {
     unique_ptr<PhysicalOperator> child_physical_oper;
-    rc = create(*child_oper, child_physical_oper, join_oper.type());
+    if(parent_oper_type == LogicalOperatorType::DELETE) {
+      rc = create(*child_oper, child_physical_oper, LogicalOperatorType::DELETE);
+    }else {
+      rc = create(*child_oper, child_physical_oper, join_oper.type());
+    }
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to create physical child oper. rc=%s", strrc(rc));
       return rc;

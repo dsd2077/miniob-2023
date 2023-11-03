@@ -33,24 +33,28 @@ using namespace common;
 
 RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
 {
+  SqlResult *sql_result = sql_event->session_event()->sql_result();
   unique_ptr<LogicalOperator> logical_operator;
   RC rc = create_logical_plan(sql_event, logical_operator);
   if (rc != RC::SUCCESS) {
     if (rc != RC::UNIMPLENMENT) {
       LOG_WARN("failed to create logical plan. rc=%s", strrc(rc));
     }
+    sql_result->set_return_code(rc);
     return rc;
   }
 
   rc = rewrite(logical_operator);   // 难道是因为改写的问题？
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
+    sql_result->set_return_code(rc);
     return rc;
   }
 
   rc = optimize(logical_operator);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to optimize plan. rc=%s", strrc(rc));
+    sql_result->set_return_code(rc);
     return rc;
   }
 
@@ -58,6 +62,7 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
   rc = generate_physical_plan(logical_operator, physical_operator);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to generate physical plan. rc=%s", strrc(rc));
+    sql_result->set_return_code(rc);
     return rc;
   }
 

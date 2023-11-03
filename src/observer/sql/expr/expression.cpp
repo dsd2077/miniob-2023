@@ -92,6 +92,26 @@ void FieldExpr::get_fieldexprs_without_aggrfunc(Expression *expr, std::vector<Fi
   return;
 }
 
+bool FieldExpr::in_expression(const Expression *expr) 
+{
+  switch (expr->type()) {
+    case ExprType::FIELD: {
+      return field_.equal(((const FieldExpr *)expr)->field_);
+    }
+    case ExprType::AGGRFUNC: {
+      const AggrFuncExpression *afexp = (const AggrFuncExpression *)expr;
+      return in_expression(&afexp->fieldexpr());
+    }
+    case ExprType::ARITHMETIC: {
+      ArithmeticExpr *bexp = (ArithmeticExpr *)expr;
+      return in_expression(bexp->left().get()) || in_expression(bexp->right().get());
+    }
+    default:
+      break;
+  }
+  return false;
+}
+
 RC ValueExpr::get_value(const Tuple &tuple, Value &value) const
 {
   value = value_;

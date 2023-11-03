@@ -144,3 +144,9 @@ RC FieldMeta::from_json(const Json::Value &json_value, FieldMeta &field)
   bool visible = visible_value.asBool();
   return field.init(name, type, offset, len, visible);
 }
+
+bool FieldMeta::equal(const FieldMeta &other) const
+{
+  return name_ == other.name_ && attr_type_ == other.attr_type_ && attr_offset_ == other.attr_offset_ &&
+         attr_len_ == other.attr_len_;
+  }

@@ -155,7 +155,7 @@ RC LogicalPlanGenerator::create_plan(
 
   // 2 process groupby clause and aggrfunc fileds
   // 2.1 gen sort oper for groupby
-  // SortOperator *sort_oper_for_groupby = nullptr;
+  // OrderByLogicalOperator *sort_oper_for_groupby = nullptr;
   // if (nullptr != select_stmt->orderby_stmt_for_groupby()) {
   //   sort_oper_for_groupby = new SortOperator(select_stmt->orderby_stmt_for_groupby());
   //   sort_oper_for_groupby->add_child(top_op);
@@ -187,25 +187,25 @@ RC LogicalPlanGenerator::create_plan(
   //   }
   // }
 
-  // GroupByStmt *groupby_stmt = select_stmt->groupby_stmt();
+  GroupByStmt *groupby_stmt = select_stmt->groupby_stmt();
   // 2.5 do check 
-  // if (!aggr_exprs.empty() && !field_exprs.empty()) {
-  //   if (nullptr == groupby_stmt) {
-  //     return RC::SQL_SYNTAX;
-  //   }
-  //   for (auto field_expr : field_exprs) {
-  //     bool in_groupby = false;
-  //     for (auto groupby_unit : groupby_stmt->groupby_units()) {
-  //       if (field_expr->in_expression(groupby_unit->expr())) {
-  //         in_groupby = true;
-  //         break;
-  //       }
-  //     }
-  //     if (!in_groupby) {
-  //       return RC::SQL_SYNTAX;
-  //     }
-  //   }
-  // }
+  if (!aggr_exprs.empty() && !field_exprs.empty()) {
+    if (nullptr == groupby_stmt) {
+      return RC::SQL_SYNTAX;
+    }
+    for (auto field_expr : field_exprs) {
+      bool in_groupby = false;
+      for (auto groupby_unit : groupby_stmt->groupby_units()) {
+        if (field_expr->in_expression(groupby_unit->expr())) {
+          in_groupby = true;
+          break;
+        }
+      }
+      if (!in_groupby) {
+        return RC::SQL_SYNTAX;
+      }
+    }
+  }
 
   // 2.6 gen groupby oper
   if (0 != aggr_exprs.size()) {

@@ -72,6 +72,8 @@ public:
   void set_int(Record &record, int value);
   int  get_int(const Record &record);
 
+  bool equal(const Field &other) const { return table_ == other.table_ && field_->equal(*other.field_); }
+
   const char *get_data(const Record &record);
 
 private:

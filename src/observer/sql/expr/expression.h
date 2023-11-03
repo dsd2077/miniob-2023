@@ -138,6 +138,7 @@ public:
 
   RC get_value(const Tuple &tuple, Value &value) const override;
 
+  bool in_expression(const Expression *expr) ;
 
 private:
   Field field_;

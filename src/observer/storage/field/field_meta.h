@@ -42,6 +42,7 @@ public:
   int offset() const;
   int len() const;
   bool visible() const;
+  bool equal(const FieldMeta &other) const;
 
 public:
   void desc(std::ostream &os) const;

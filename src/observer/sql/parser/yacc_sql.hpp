@@ -111,6 +111,7 @@ extern int yydebug;
     NULL_VALUE = 312,              /* NULL_VALUE  */
     LIKE_T = 313,                  /* LIKE_T  */
     NOT_LIKE_T = 314,              /* NOT_LIKE_T  */
+<<<<<<< HEAD
     AS = 315,                      /* AS  */
     AGGR_MAX = 316,                /* AGGR_MAX  */
     AGGR_MIN = 317,                /* AGGR_MIN  */
@@ -123,6 +124,15 @@ extern int yydebug;
     DATE = 324,                    /* DATE  */
     SSS = 325,                     /* SSS  */
     UMINUS = 326                   /* UMINUS  */
+=======
+    UNIQUE = 315,                  /* UNIQUE  */
+    NUMBER = 316,                  /* NUMBER  */
+    FLOAT = 317,                   /* FLOAT  */
+    ID = 318,                      /* ID  */
+    DATE = 319,                    /* DATE  */
+    SSS = 320,                     /* SSS  */
+    UMINUS = 321                   /* UMINUS  */
+>>>>>>> lzh_mirror
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -131,7 +141,11 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
+<<<<<<< HEAD
 #line 125 "yacc_sql.y"
+=======
+#line 120 "yacc_sql.y"
+>>>>>>> lzh_mirror
 
   ParsedSqlNode *                   sql_node;
   CompOp                            comp;
@@ -162,7 +176,11 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
+<<<<<<< HEAD
 #line 166 "yacc_sql.hpp"
+=======
+#line 153 "yacc_sql.hpp"
+>>>>>>> lzh_mirror
 
 };
 typedef union YYSTYPE YYSTYPE;

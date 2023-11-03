@@ -27,10 +27,12 @@ public:
   BplusTreeIndex() = default;
   virtual ~BplusTreeIndex() noexcept;
 
-  RC create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta);
-  RC open(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta);
+  RC create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &field_meta, bool allow_repeat = true);
+  RC open(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &field_meta);
   RC close();
 
+  // RC create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &fields_metas); // 重载create：对于多列索引
+  // RC open(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &fileds_metas); // 重载open：对于多列索引
   RC insert_entry(const char *record, const RID *rid) override;
   RC delete_entry(const char *record, const RID *rid) override;
 
@@ -39,6 +41,9 @@ public:
    */
   IndexScanner *create_scanner(const char *left_key, int left_len, bool left_inclusive, const char *right_key,
       int right_len, bool right_inclusive) override;
+
+  IndexScanner *create_scanner_multi_cols(std::vector<Value> &left_key, bool left_inclusive, std::vector<Value> &right_key,
+      bool right_inclusive) override;
 
   RC sync() override;
 
@@ -57,7 +62,7 @@ public:
   BplusTreeIndexScanner(BplusTreeHandler &tree_handle);
   ~BplusTreeIndexScanner() noexcept override;
 
-  RC next_entry(RID *rid) override;
+  RC next_entry(RID *rid, int op_type) override;
   RC destroy() override;
 
   RC open(const char *left_key, int left_len, bool left_inclusive, const char *right_key, int right_len,

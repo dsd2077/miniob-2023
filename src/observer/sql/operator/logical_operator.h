@@ -42,6 +42,7 @@ enum class LogicalOperatorType
   DELETE,     ///< 删除，删除可能会有子查询
   UPDATE,
   EXPLAIN,    ///< 查看执行计划
+  NONE,       ///< T10加入：用于第一层的记录父算子类型
   ORDER_BY,   
   GROUP_BY
 };

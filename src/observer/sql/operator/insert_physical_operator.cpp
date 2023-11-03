@@ -27,11 +27,12 @@ RC InsertPhysicalOperator::open(Trx *trx)
 {
   Record record;
   RC rc = table_->make_record(static_cast<int>(values_.size()), values_.data(), record);  
+  // std::cout << "make record " << values_.data() << std::endl;
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to make record. rc=%s", strrc(rc));
     return rc;
   }
-
+  // std::cout << "record data = " << record.data() << std::endl;
   rc = trx->insert_record(table_, record);    // 内部调用table->insert_record(record)
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to insert record by transaction. rc=%s", strrc(rc));

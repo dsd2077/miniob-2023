@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/rc.h"
 #include "sql/expr/tuple.h"
+#include "logical_operator.h"
 #include "sql/expr/expression.h"
 
 class Record;
@@ -88,6 +89,16 @@ public:
     return children_;
   }
 
+  void setParentOperType(LogicalOperatorType parent_oper_type)
+  {
+    parent_oper_type_ = parent_oper_type;
+  }
+
+  LogicalOperatorType getParentOperType()
+  {
+    return parent_oper_type_;
+  }
+
   void set_parent_tuple(const Tuple *parent_tuple)
   {
     parent_tuple_ = const_cast<Tuple *>(parent_tuple);
@@ -98,5 +109,6 @@ public:
 
 protected:
   std::vector<std::unique_ptr<PhysicalOperator>> children_;
+  LogicalOperatorType parent_oper_type_; // 父算子的类型
   Tuple *parent_tuple_ = nullptr;  // for sub query
 };

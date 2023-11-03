@@ -38,7 +38,7 @@ RC ExecuteStage::handle_request(SQLStageEvent *sql_event)
   if (physical_operator != nullptr) {
     return handle_request_with_physical_operator(sql_event);
   }
-
+  // CREATE/ALTER 等DDL语句不会生成查询计划，也就没有逻辑/物理算子，它们从这里执行
   SessionEvent *session_event = sql_event->session_event();
 
   Stmt *stmt = sql_event->stmt();

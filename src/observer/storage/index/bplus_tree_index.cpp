@@ -20,41 +20,49 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
   close();
 }
 
-RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
+// T10修改：适应多列联合索引
+RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &field_meta, bool allow_repeat)
 {
   if (inited_) {
-    LOG_WARN("Failed to create index due to the index has been created before. file_name:%s, index:%s, field:%s",
+    LOG_WARN("Failed to create index due to the index has been created before. file_name:%s, index:%s",
         file_name,
-        index_meta.name(),
-        index_meta.field());
+        index_meta.name()
+        );
     return RC::RECORD_OPENNED;
   }
 
-  Index::init(index_meta, field_meta);
+  Index::init(index_meta, field_meta);  // 调用父类构造函数，初始化索引的元信息和相应字段的元信息
 
-  RC rc = index_handler_.create(file_name, field_meta.type(), field_meta.len());
+  std::vector<AttrType> attrs;
+  std::vector<int> attrs_lengths;
+  std::vector<int> attrs_offsets;
+  for(int i = 0 ; i < field_meta.size() ; i ++ ) {
+    attrs.emplace_back(field_meta[i].type());
+    attrs_lengths.emplace_back(field_meta[i].len());
+    attrs_offsets.emplace_back(field_meta[i].offset());
+  }
+  RC rc = index_handler_.create(file_name, attrs, attrs_lengths, attrs_offsets, -1, -1, allow_repeat);  // 这里真正地创建索引文件，这里调用的是B+树句柄的create函数
   if (RC::SUCCESS != rc) {
-    LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, field:%s, rc:%s",
+    LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, rc:%s",
         file_name,
         index_meta.name(),
-        index_meta.field(),
         strrc(rc));
     return rc;
   }
 
   inited_ = true;
   LOG_INFO(
-      "Successfully create index, file_name:%s, index:%s, field:%s", file_name, index_meta.name(), index_meta.field());
+      "Successfully create index, file_name:%s, index:%s", file_name, index_meta.name());
   return RC::SUCCESS;
 }
 
-RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
+RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &field_meta)
 {
   if (inited_) {
-    LOG_WARN("Failed to open index due to the index has been initedd before. file_name:%s, index:%s, field:%s",
+    LOG_WARN("Failed to open index due to the index has been initedd before. file_name:%s, index:%s",
         file_name,
-        index_meta.name(),
-        index_meta.field());
+        index_meta.name()
+    );
     return RC::RECORD_OPENNED;
   }
 
@@ -62,24 +70,55 @@ RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, cons
 
   RC rc = index_handler_.open(file_name);
   if (RC::SUCCESS != rc) {
-    LOG_WARN("Failed to open index_handler, file_name:%s, index:%s, field:%s, rc:%s",
+    LOG_WARN("Failed to open index_handler, file_name:%s, index:%s, rc:%s",
         file_name,
         index_meta.name(),
-        index_meta.field(),
         strrc(rc));
     return rc;
   }
 
   inited_ = true;
   LOG_INFO(
-      "Successfully open index, file_name:%s, index:%s, field:%s", file_name, index_meta.name(), index_meta.field());
+      "Successfully open index, file_name:%s, index:%s", file_name, index_meta.name());
   return RC::SUCCESS;
 }
+
+// // 多列情况的索引
+// RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &fields_metas)
+// {
+//   if(inited_) {
+//     std::vector<std::string> fields;
+//     index_meta.fields(fields);
+//     std::string res = "";
+//     for(int i = 0 ; i < fields.size() ; i ++ ) {
+//       if(i > 0) {
+//         res += ",";
+//       }
+//       res += fields[i];
+//     }
+//     LOG_WARN("Failed to create index due to the index has been created before. file_name:%s, index:%s, field:%s",
+//         file_name,
+//         index_meta.name(),
+//         res);
+//     return RC::RECORD_OPENNED;
+//   }
+
+//   Index::init(index_meta, fields_metas);
+  
+
+//   inited_ = true;
+  
+// }
+
+// RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std::vector<FieldMeta> &fileds_metas)
+// {
+
+// }
 
 RC BplusTreeIndex::close()
 {
   if (inited_) {
-    LOG_INFO("Begin to close index, index:%s, field:%s", index_meta_.name(), index_meta_.field());
+    LOG_INFO("Begin to close index, index:%s", index_meta_.name());
     index_handler_.close();
     inited_ = false;
   }
@@ -89,12 +128,17 @@ RC BplusTreeIndex::close()
 
 RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
 {
-  return index_handler_.insert_entry(record + field_meta_.offset(), rid);
+  // T10修改：这里需要将record中真正对应索引的字段取出，组成B+树中真正的Key
+  // T11修改：这里需要加入对重复数据的判断，在插入过程中如果遇到重复（仅仅指key中除了rid的部分）就回滚，插入失败
+
+  // return index_handler_.insert_entry(record + field_meta_.offset(), rid);
+  return index_handler_.insert_entry(record, rid);
 }
 
 RC BplusTreeIndex::delete_entry(const char *record, const RID *rid)
 {
-  return index_handler_.delete_entry(record + field_meta_.offset(), rid);
+  // return index_handler_.delete_entry(record + field_meta_.offset(), rid);
+  return index_handler_.delete_entry(record, rid);
 }
 
 IndexScanner *BplusTreeIndex::create_scanner(
@@ -102,6 +146,43 @@ IndexScanner *BplusTreeIndex::create_scanner(
 {
   BplusTreeIndexScanner *index_scanner = new BplusTreeIndexScanner(index_handler_);
   RC rc = index_scanner->open(left_key, left_len, left_inclusive, right_key, right_len, right_inclusive);
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to open index scanner. rc=%d:%s", rc, strrc(rc));
+    delete index_scanner;
+    return nullptr;
+  }
+  return index_scanner;
+}
+
+IndexScanner *BplusTreeIndex::create_scanner_multi_cols(
+      std::vector<Value> &left_key, bool left_inclusive, std::vector<Value> &right_key,
+      bool right_inclusive)
+{
+  BplusTreeIndexScanner *index_scanner = new BplusTreeIndexScanner(index_handler_);
+  int sz = 0;
+  for(int i = 0 ; i < left_key.size() ; i ++ ) {
+    sz += left_key[i].length();
+  }
+  char *left_key_buf = new (std::nothrow) char[sz];
+  sz = 0;
+  for(int i = 0 ; i < right_key.size() ; i ++ ) {
+    sz += right_key[i].length();
+  }
+  char *right_key_buf = new (std::nothrow) char[sz];
+
+  // 复制内容，构造key
+  int offset = 0;
+  for(int i = 0 ; i < left_key.size() ; i ++ ) {
+    memcpy(left_key_buf + offset, left_key[i].data(), left_key[i].length());
+    offset += left_key[i].length();
+  }
+  offset = 0;
+  for(int i = 0 ; i < right_key.size() ; i ++ ) {
+    memcpy(right_key_buf + offset, right_key[i].data(), right_key[i].length());
+    offset += right_key[i].length();
+  }
+
+  RC rc = index_scanner->open(left_key_buf, sz, left_inclusive, right_key_buf, sz, right_inclusive);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to open index scanner. rc=%d:%s", rc, strrc(rc));
     delete index_scanner;
@@ -130,9 +211,9 @@ RC BplusTreeIndexScanner::open(
   return tree_scanner_.open(left_key, left_len, left_inclusive, right_key, right_len, right_inclusive);
 }
 
-RC BplusTreeIndexScanner::next_entry(RID *rid)
+RC BplusTreeIndexScanner::next_entry(RID *rid, int op_type)
 {
-  return tree_scanner_.next_entry(*rid);
+  return tree_scanner_.next_entry(*rid, op_type);
 }
 
 RC BplusTreeIndexScanner::destroy()

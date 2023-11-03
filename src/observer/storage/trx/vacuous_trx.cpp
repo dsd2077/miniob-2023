@@ -53,6 +53,7 @@ void VacuousTrxKit::all_trxes(std::vector<Trx *> &trxes)
 
 RC VacuousTrx::insert_record(Table *table, Record &record)
 {
+  // std::cout << "ready to insert record " << record.data() << std::endl;
   return table->insert_record(record);
 }
 

@@ -541,7 +541,11 @@ extern int yylex \
 #undef yyTABLES_NAME
 #endif
 
+<<<<<<< HEAD
 #line 160 "lex_sql.l"
+=======
+#line 155 "lex_sql.l"
+>>>>>>> lzh_mirror
 
 
 #line 548 "lex_sql.h"

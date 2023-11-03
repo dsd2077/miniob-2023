@@ -46,6 +46,7 @@ public:
   const FieldMeta *trx_field() const;
   const FieldMeta *field(int index) const;
   const FieldMeta *field(const char *name) const;
+  void fields_by_attrs(std::vector<FieldMeta> &res, std::vector<std::string> &attr_names) const;
   const FieldMeta *find_field_by_offset(int offset) const;
   const std::vector<FieldMeta> *field_metas() const
   {
@@ -57,7 +58,8 @@ public:
   int sys_field_num() const;
 
   const IndexMeta *index(const char *name) const;
-  const IndexMeta *find_index_by_field(const char *field) const;
+  const IndexMeta *find_index_by_field(const char *field) const;  // 单个属性查找索引
+  const IndexMeta *find_index_by_fields(std::vector<const char *> fields) const;  // 多个属性的联合索引查找
   const IndexMeta *index(int i) const;
   int index_num() const;
 

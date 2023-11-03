@@ -79,6 +79,9 @@ public:
   virtual IndexScanner *create_scanner(const char *left_key, int left_len, bool left_inclusive, const char *right_key,
       int right_len, bool right_inclusive) = 0;
 
+  virtual IndexScanner *create_scanner_multi_cols(std::vector<Value> &left_key, bool left_inclusive, std::vector<Value> &right_key,
+      bool right_inclusive) = 0;
+
   /**
    * @brief 同步索引数据到磁盘
    * 
@@ -87,10 +90,12 @@ public:
 
 protected:
   RC init(const IndexMeta &index_meta, const FieldMeta &field_meta);
+  RC init(const IndexMeta &index_meta, std::vector<FieldMeta> &fields_metas);  // 重载Index的初始化函数
 
 protected:
   IndexMeta index_meta_;  ///< 索引的元数据
-  FieldMeta field_meta_;  ///< 当前实现仅考虑一个字段的索引
+  // FieldMeta field_meta_;  ///< 当前实现仅考虑一个字段的索引
+  std::vector<FieldMeta> fields_metas_; // 多列索引的字段，注意这里将会存储实际的FieldMeta对象
 };
 
 /**
@@ -107,6 +112,6 @@ public:
    * 遍历元素数据
    * 如果没有更多的元素，返回RECORD_EOF
    */
-  virtual RC next_entry(RID *rid) = 0;
+  virtual RC next_entry(RID *rid, int op_type) = 0;
   virtual RC destroy() = 0;
 };

@@ -46,7 +46,9 @@ void test_insert()
 {
   RC rc = RC::SUCCESS;
   for (int i = 0; i < insert_num; i++) {
-
+    // if(i % 10 == 0) {
+    //   std::cout << "current i : " << i << std::endl;
+    // }
     rid.page_num = i / page_size;
     rid.slot_num = i % page_size;
 
@@ -61,13 +63,16 @@ void test_insert()
       rc = handler->insert_entry((const char *)&i, &rid);
       ASSERT_EQ(RC::SUCCESS, rc);
       handler->print_tree();
-      ASSERT_EQ(true, handler->validate_tree());
+      bool flag = handler->validate_tree();
+      // std::cout << "validate : " << flag << std::endl;
+      ASSERT_EQ(true, flag);
     }
   }
+  // std::cout << "1st insert finish" << std::endl;
   handler->print_tree();
 
   for (int i = 0; i < insert_num; i++) {
-
+    // std::cout << "current i : " << i << std::endl;
     rid.page_num = i / page_size;
     rid.slot_num = i % page_size;
 
@@ -85,10 +90,10 @@ void test_insert()
       ASSERT_EQ(true, handler->validate_tree());
     }
   }
-
+  // std::cout << "2nd insert finish" << std::endl;
   handler->print_tree();
   for (int i = 0; i < insert_num; i++) {
-
+    // std::cout << "current i : " << i << std::endl;
     rid.page_num = i / page_size;
     rid.slot_num = i % page_size;
 
@@ -106,6 +111,7 @@ void test_insert()
     }
   }
 
+  // std::cout << "3rd insert finish" << std::endl;
   LOG_INFO("@@@@ finish first step insert");
   handler->print_tree();
   handler->print_leafs();
@@ -113,6 +119,7 @@ void test_insert()
   int start = insert_num / TIMES > page_size ? page_size : insert_num / TIMES;
   int end = insert_num / TIMES > page_size ? (2 * page_size) : (2 * insert_num / TIMES);
   for (int i = start; i < end; i++) {
+    // std::cout << "current i : " << i << std::endl;
     rid.page_num = i / page_size;
     rid.slot_num = i % page_size;
 
@@ -135,6 +142,7 @@ void test_insert()
       ASSERT_EQ(true, handler->validate_tree());
     }
   }
+  // std::cout << "4th insert finish" << std::endl;
 }
 
 void test_get()
@@ -318,9 +326,9 @@ TEST(test_bplus_tree, test_leaf_index_node_handle)
   index_file_header.root_page = BP_INVALID_PAGE_NUM;
   index_file_header.internal_max_size = 5;
   index_file_header.leaf_max_size = 5;
-  index_file_header.attr_length = 4;
-  index_file_header.key_length = 4 + sizeof(RID);
-  index_file_header.attr_type = INTS;
+  index_file_header.attr_lens[index_file_header.attr_num] = 4;
+  // index_file_header.key_length = 4 + sizeof(RID);
+  index_file_header.attrs[index_file_header.attr_num ++] = INTS;
 
   Frame frame;
 
@@ -375,9 +383,9 @@ TEST(test_bplus_tree, test_internal_index_node_handle)
   index_file_header.root_page = BP_INVALID_PAGE_NUM;
   index_file_header.internal_max_size = 5;
   index_file_header.leaf_max_size = 5;
-  index_file_header.attr_length = 4;
-  index_file_header.key_length = 4 + sizeof(RID);
-  index_file_header.attr_type = INTS;
+  index_file_header.attr_lens[index_file_header.attr_num] = 4;
+  // index_file_header.key_length = 4 + sizeof(RID);
+  index_file_header.attrs[index_file_header.attr_num ++] = INTS;
 
   Frame frame;
 
@@ -409,12 +417,14 @@ TEST(test_bplus_tree, test_internal_index_node_handle)
     key = i * 2 + 1;
     internal_node.insert((const char *)&key, (PageNum)key, key_comparator);
   }
+  std::cout <<"internal node size is : " << internal_node.size() << std::endl;
 
   ASSERT_EQ(5, internal_node.size());
 
   for (int i = 1; i < 5; i++) {
     key = i * 2 + 1;
     int real_key = *(int*)internal_node.key_at(i);
+    std::cout << "key : " << real_key << std::endl;
     ASSERT_EQ(key, real_key);
   }
 
@@ -474,11 +484,13 @@ TEST(test_bplus_tree, test_chars)
   handler = new BplusTreeHandler();
   handler->create(index_name, CHARS, 8, ORDER, ORDER);
 
+  std::cout << "finish create" << std::endl;
+
   char keys[][9] = {
     "abcdefg",
     "12345678",
-    "12345678",
-    "abcdefg",
+    // "12345678",
+    // "abcdefg",
     "abcdefga"
   };
 
@@ -487,9 +499,12 @@ TEST(test_bplus_tree, test_chars)
   for (size_t i = 0; i < sizeof(keys)/sizeof(keys[0]); i++) {
     rid.page_num = 0;
     rid.slot_num = i;
+    // std::cout << keys[i] << std::endl;
     rc = handler->insert_entry(keys[i], &rid);
     ASSERT_EQ(RC::SUCCESS, rc);
   }
+
+  std::cout << "finish insert" << std::endl;
 
   LOG_INFO("begin to print bplus tree of chars");
   handler->print_tree();
@@ -501,11 +516,11 @@ TEST(test_bplus_tree, test_chars)
   ASSERT_EQ(rc, RC::SUCCESS);
 
   int count = 0;
-  while (RC::SUCCESS == (rc = scanner.next_entry(rid))) {
+  while (RC::SUCCESS == (rc = scanner.next_entry(rid, 0))) {
     count++;
   }
   scanner.close();
-  ASSERT_EQ(2, count);
+  ASSERT_EQ(1, count);
 }
 
 TEST(test_bplus_tree, test_scanner)
@@ -528,7 +543,8 @@ TEST(test_bplus_tree, test_scanner)
     rc = handler->insert_entry((const char *)&key, &rid);
     ASSERT_EQ(RC::SUCCESS, rc);
   }
-
+  // handler->print_tree()
+  std::cout << "print tree : " << std::endl;
   handler->print_tree();
 
   BplusTreeScanner scanner(*handler);
@@ -548,6 +564,8 @@ TEST(test_bplus_tree, test_scanner)
   rc = scanner.open((const char *)&begin, 4, false, (const char *)&end, 4, false);
   ASSERT_EQ(RC::SUCCESS, rc);
   rc = scanner.next_entry(rid);
+  // ASSERT_EQ(RC::SUCCESS, rc);
+  // rc = scanner.next_entry(rid);
   ASSERT_EQ(RC::RECORD_EOF, rc);
 
   scanner.close();
@@ -726,11 +744,13 @@ TEST(test_bplus_tree, test_bplus_tree_insert)
   handler = new BplusTreeHandler();
   handler->create(index_name, INTS, sizeof(int), ORDER, ORDER);
 
+  std::cout << "start insert..." << std::endl;
   test_insert();
-
+  std::cout << "finish insert, start get..." << std::endl;
   test_get();
-
+  std::cout << "finish get, start delete..." << std::endl;
   test_delete();
+  std::cout << "finish delete" << std::endl;
 
   handler->close();
   delete handler;

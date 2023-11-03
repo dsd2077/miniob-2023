@@ -178,7 +178,7 @@ public:
   {
     table_ = table;
     this->speces_.reserve(fields->size());
-    for (const FieldMeta &field : *fields) {
+    for (const FieldMeta &field : (*fields)) {
       speces_.push_back(new FieldExpr(table, &field));
     }
   }

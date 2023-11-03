@@ -118,6 +118,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         AGGR_SUM
         AGGR_AVG
         AGGR_COUNT
+        UNIQUE  // T11
 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
@@ -190,6 +191,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            show_tables_stmt
 %type <sql_node>            desc_table_stmt
 %type <sql_node>            create_index_stmt
+%type <sql_node>            create_unique_index_stmt  // T11
 %type <sql_node>            drop_index_stmt
 %type <sql_node>            sync_stmt
 %type <sql_node>            begin_stmt
@@ -250,6 +252,7 @@ command_wrapper:
   | show_tables_stmt
   | desc_table_stmt
   | create_index_stmt
+  | create_unique_index_stmt
   | drop_index_stmt
   | sync_stmt
   | begin_stmt
@@ -319,18 +322,45 @@ desc_table_stmt:
     ;
 
 create_index_stmt:    /*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE
+    CREATE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
       CreateIndexSqlNode &create_index = $$->create_index;
       create_index.index_name = $3;
       create_index.relation_name = $5;
-      create_index.attribute_name = $7;
+
+      std::vector<RelAttrSqlNode> *attrs = $8;
+      if(attrs == nullptr) {
+        attrs = new std::vector<RelAttrSqlNode>;
+      }
+      create_index.attributes_names.swap(*attrs);
+      create_index.attributes_names.emplace_back(*$7);
+      std::reverse(create_index.attributes_names.begin(), create_index.attributes_names.end());
       free($3);
       free($5);
       free($7);
     }
     ;
+
+create_unique_index_stmt: /*create unique index 语句的语法解析树，和create index的完全一样，unique在stmt到逻辑算子部分开始发挥作用*/
+    CREATE UNIQUE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
+    {
+      $$ = new ParsedSqlNode(SCF_CREATE_UNIQUE_INDEX);
+      CreateUniqueIndexSqlNode &create_unique_index = $$->create_unique_index;
+      create_unique_index.index_name = $4;
+      create_unique_index.relation_name = $6;
+
+      std::vector<RelAttrSqlNode> *attrs = $9;
+      if(attrs == nullptr) {
+        attrs = new std::vector<RelAttrSqlNode>;
+      }
+      create_unique_index.attributes_names.swap(*attrs);
+      create_unique_index.attributes_names.emplace_back(*$8);
+      std::reverse(create_unique_index.attributes_names.begin(), create_unique_index.attributes_names.end());
+      free($4);
+      free($6);
+      free($8);
+    }
 
 drop_index_stmt:      /*drop index 语句的语法解析树*/
     DROP INDEX ID ON ID
@@ -372,7 +402,7 @@ attr_def_list:
       } else {
         $$ = new std::vector<AttrInfoSqlNode>;
       }
-      $$->emplace_back(*$2);
+      $$->emplace_back(*$2);  // 按照语法树递归执行，最后一个attr将会放到vector的第一个位置，所以在调用attr_def_list的部分需要reverse
       delete $2;
     }
     ;

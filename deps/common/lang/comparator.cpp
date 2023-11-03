@@ -23,6 +23,7 @@ int compare_int(void *arg1, void *arg2)
 {
   int v1 = *(int *)arg1;
   int v2 = *(int *)arg2;
+  // std::cout << "int compare: v1=" << v1 << ", v2=" << v2 << std::endl;
   return v1 - v2;
 }
 
@@ -30,6 +31,7 @@ int compare_float(void *arg1, void *arg2)
 {
   float v1 = *(float *)arg1;
   float v2 = *(float *)arg2;
+  // std::cout << "floag compare: v1=" << v1 << ", v2=" << v2 << std::endl;
   float cmp = v1 - v2;
   if (cmp > EPSILON) {
     return 1;
@@ -44,6 +46,7 @@ int compare_string(void *arg1, int arg1_max_length, void *arg2, int arg2_max_len
 {
   const char *s1 = (const char *)arg1;
   const char *s2 = (const char *)arg2;
+  // std::cout << "string compare: v1=" << s1 << ", v2=" << s2 << std::endl;
   int maxlen = std::min(arg1_max_length, arg2_max_length);
   int result = strncmp(s1, s2, maxlen);
   if (0 != result) {

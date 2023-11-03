@@ -113,6 +113,7 @@ INNER                                   RETURN_TOKEN(INNER);
 JOIN                                    RETURN_TOKEN(JOIN);
 LIKE                                    RETURN_TOKEN(LIKE_T); // T5
 NOT{WHITE_SAPCE}LIKE                    RETURN_TOKEN(NOT_LIKE_T);  // T5
+UNIQUE                                  RETURN_TOKEN(UNIQUE); // T11
 ORDER                                   RETURN_TOKEN(ORDER);
 BY                                      RETURN_TOKEN(BY);
 NOT                                     RETURN_TOKEN(NOT);

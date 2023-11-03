@@ -40,7 +40,7 @@ ForwardIterator lower_bound(ForwardIterator first, ForwardIterator last,
     iter = first;
     auto step = last_count / 2;
     std::advance(iter, step);
-    int result = comp(*iter, val);
+    int result = comp(*iter, val);  // (cur_key, key)比较
     if (0 == result) {
       first = iter;
       found = true;

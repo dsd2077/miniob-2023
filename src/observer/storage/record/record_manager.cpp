@@ -197,7 +197,7 @@ RC RecordPageHandler::insert_record(const char *data, RID *rid)
 
   // assert index < page_header_->record_capacity
   char *record_data = get_record_data(index);
-  memcpy(record_data, data, page_header_->record_real_size);
+  memcpy(record_data, data, page_header_->record_real_size);  // 这里将record真正地写入了page
 
   frame_->mark_dirty();
 

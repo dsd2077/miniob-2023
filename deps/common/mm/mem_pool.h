@@ -443,7 +443,7 @@ protected:
   bool dynamic;
   int size;
   int item_size;
-  int item_num_per_pool;
+  int item_num_per_pool;  // 内存空间每次申请的单位长度
 
   std::list<void *> pools;
   std::set<void *> used;

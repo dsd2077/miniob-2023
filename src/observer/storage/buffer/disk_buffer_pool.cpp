@@ -337,12 +337,12 @@ RC DiskBufferPool::allocate_page(Frame **frame)
   int byte = 0, bit = 0;
   if ((file_header_->allocated_pages) < (file_header_->page_count)) {
     // There is one free page
-    for (int i = 0; i < file_header_->page_count; i++) {
+    for (int i = 0; i < file_header_->page_count; i++) {  // 新创建的文件，将会返回page_num == 0的页
       byte = i / 8;
       bit = i % 8;
       if (((file_header_->bitmap[byte]) & (1 << bit)) == 0) {
         (file_header_->allocated_pages)++;
-        file_header_->bitmap[byte] |= (1 << bit);
+        file_header_->bitmap[byte] |= (1 << bit); // 数据库头文件中的bitmap似乎是按照大端序填充的
         // TODO,  do we need clean the loaded page's data?
         hdr_frame_->mark_dirty();
 

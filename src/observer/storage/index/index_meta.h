@@ -15,6 +15,8 @@ See the Mulan PSL v2 for more details. */
 #pragma once
 
 #include <string>
+#include <vector>
+
 #include "common/rc.h"
 
 class TableMeta;
@@ -23,6 +25,11 @@ class FieldMeta;
 namespace Json {
 class Value;
 }  // namespace Json
+
+enum IndexType{
+  COMMON_INDEX, // 普通索引
+  UNIQUE_INDEX, // 唯一索引
+};
 
 /**
  * @brief 描述一个索引
@@ -35,11 +42,14 @@ class IndexMeta
 public:
   IndexMeta() = default;
 
-  RC init(const char *name, const FieldMeta &field);
+  // RC init(const char *name, const FieldMeta &field);
+  RC init(const char *name, std::vector<FieldMeta> &fields); // 重载初始化函数，适应多列场景
+  void set_type(enum IndexType type);   // 设置索引类型
 
 public:
   const char *name() const;
-  const char *field() const;
+  // const char *field() const;
+  void fields(std::vector<std::string> &fields_names) const;  // 多列索引的索引名给外部
 
   void desc(std::ostream &os) const;
 
@@ -49,5 +59,6 @@ public:
 
 protected:
   std::string name_;   // index's name
-  std::string field_;  // field's name
+  enum IndexType index_type_ = COMMON_INDEX; // index类型，默认是COMMON_INDEX
+  std::vector<std::string> multi_fields_; // 多列索引的所有列名，T10，T11涉及到隐式多列索引，这里先暂时不记录类型
 };

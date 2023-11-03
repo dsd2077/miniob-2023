@@ -179,6 +179,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_list>           attr_list
 %type <rel_attr_item>       rel_attr_item
 %type <rel_attr_item>       rel_attr
+%type <attr_list>           attr_list_index
 
 %type <expression_list>     expression_list
 %type <sql_node>            calc_stmt
@@ -322,7 +323,7 @@ desc_table_stmt:
     ;
 
 create_index_stmt:    /*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
+    CREATE INDEX ID ON ID LBRACE rel_attr attr_list_index RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
       CreateIndexSqlNode &create_index = $$->create_index;
@@ -343,7 +344,7 @@ create_index_stmt:    /*create index 语句的语法解析树*/
     ;
 
 create_unique_index_stmt: /*create unique index 语句的语法解析树，和create index的完全一样，unique在stmt到逻辑算子部分开始发挥作用*/
-    CREATE UNIQUE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
+    CREATE UNIQUE INDEX ID ON ID LBRACE rel_attr attr_list_index RBRACE
     {
       $$ = new ParsedSqlNode(SCF_CREATE_UNIQUE_INDEX);
       CreateUniqueIndexSqlNode &create_unique_index = $$->create_unique_index;
@@ -652,6 +653,20 @@ rel_attr:     // 返回RelAttrSqlNode*
       free($3);
     }
     ;
+attr_list_index:
+  {
+    $$ = nullptr;
+  }
+  | COMMA rel_attr attr_list_index {
+    std:vector<RelAttrSqlNode> *temp = $3;
+    if (temp == nullptr) {
+      temp = new std::vector<RelAttrSqlNode>;
+    }
+    temp->emplace_back(*$2);
+    $$ = temp;
+    free $2;
+  }
+  ;
 
     
 select_attr:

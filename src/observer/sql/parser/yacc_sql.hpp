@@ -111,28 +111,19 @@ extern int yydebug;
     NULL_VALUE = 312,              /* NULL_VALUE  */
     LIKE_T = 313,                  /* LIKE_T  */
     NOT_LIKE_T = 314,              /* NOT_LIKE_T  */
-<<<<<<< HEAD
     AS = 315,                      /* AS  */
     AGGR_MAX = 316,                /* AGGR_MAX  */
     AGGR_MIN = 317,                /* AGGR_MIN  */
     AGGR_SUM = 318,                /* AGGR_SUM  */
     AGGR_AVG = 319,                /* AGGR_AVG  */
     AGGR_COUNT = 320,              /* AGGR_COUNT  */
-    NUMBER = 321,                  /* NUMBER  */
-    FLOAT = 322,                   /* FLOAT  */
-    ID = 323,                      /* ID  */
-    DATE = 324,                    /* DATE  */
-    SSS = 325,                     /* SSS  */
-    UMINUS = 326                   /* UMINUS  */
-=======
-    UNIQUE = 315,                  /* UNIQUE  */
-    NUMBER = 316,                  /* NUMBER  */
-    FLOAT = 317,                   /* FLOAT  */
-    ID = 318,                      /* ID  */
-    DATE = 319,                    /* DATE  */
-    SSS = 320,                     /* SSS  */
-    UMINUS = 321                   /* UMINUS  */
->>>>>>> lzh_mirror
+    UNIQUE = 321,                  /* UNIQUE  */
+    NUMBER = 322,                  /* NUMBER  */
+    FLOAT = 323,                   /* FLOAT  */
+    ID = 324,                      /* ID  */
+    DATE = 325,                    /* DATE  */
+    SSS = 326,                     /* SSS  */
+    UMINUS = 327                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -141,11 +132,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-<<<<<<< HEAD
-#line 125 "yacc_sql.y"
-=======
-#line 120 "yacc_sql.y"
->>>>>>> lzh_mirror
+#line 126 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   CompOp                            comp;
@@ -176,11 +163,7 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
-<<<<<<< HEAD
-#line 166 "yacc_sql.hpp"
-=======
-#line 153 "yacc_sql.hpp"
->>>>>>> lzh_mirror
+#line 167 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

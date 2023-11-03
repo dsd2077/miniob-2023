@@ -82,7 +82,7 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
       return create_plan(static_cast<JoinLogicalOperator &>(logical_operator), oper, parent_oper_type);
     } break;
     case LogicalOperatorType::GROUP_BY: {
-      return create_plan(static_cast<GroupByLogicalOperator &>(logical_operator), oper);
+      return create_plan(static_cast<GroupByLogicalOperator &>(logical_operator), oper, parent_oper_type);
     } break;
 
     default: {
@@ -429,7 +429,7 @@ RC PhysicalPlanGenerator::create_plan(OrderByLogicalOperator &order_by_oper, std
   return rc;
 }
 
-RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &groupby_oper, std::unique_ptr<PhysicalOperator> &oper) {
+RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &groupby_oper, std::unique_ptr<PhysicalOperator> &oper, LogicalOperatorType parent_oper_type) {
   vector<unique_ptr<LogicalOperator>> &child_opers = groupby_oper.children();
 
   unique_ptr<PhysicalOperator> child_physical_oper;
@@ -437,7 +437,7 @@ RC PhysicalPlanGenerator::create_plan(GroupByLogicalOperator &groupby_oper, std:
   RC rc = RC::SUCCESS;
   if (!child_opers.empty()) {
     LogicalOperator *child_oper = child_opers.front().get();
-    rc = create(*child_oper, child_physical_oper);
+    rc = create(*child_oper, child_physical_oper, parent_oper_type);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to create physical operator. rc=%s", strrc(rc));
       return rc;

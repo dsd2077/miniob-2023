@@ -115,7 +115,7 @@ public:
     field_name_ = field.field_name();
   }
   FieldExpr(const std::string &field_name, std::string table_name = "")
-      :field_name_(field_name), table_name_(table_name)
+      : field_name_(field_name), table_name_(table_name)
   {}
 
   RC init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db=nullptr) override;

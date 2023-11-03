@@ -230,7 +230,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     rc = RC::SUCCESS;
   }
 
-  if (header == "") {
+  if (header == "" || rc != RC::SUCCESS) {
     RC rc_close = sql_result->close();
     if (rc == RC::SUCCESS) {
       rc = rc_close;

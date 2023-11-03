@@ -90,7 +90,7 @@ public:
 
   void set_parent_tuple(const Tuple *parent_tuple)
   {
-    parent_tuple_ = parent_tuple;
+    parent_tuple_ = const_cast<Tuple *>(parent_tuple);
     for (auto &child : children_) {
       child->set_parent_tuple(parent_tuple);
     }
@@ -98,5 +98,5 @@ public:
 
 protected:
   std::vector<std::unique_ptr<PhysicalOperator>> children_;
-  const Tuple *parent_tuple_ = nullptr;  // for sub query
+  Tuple *parent_tuple_ = nullptr;  // for sub query
 };

@@ -43,6 +43,8 @@ RC FieldExpr::init(const std::vector<Table *> &tables, const std::unordered_map<
     }
     field_.set_table(table);
     field_.set_field(field_meta);
+    table_name_ = table->name();
+    field_name_ = field_meta->name();
     return RC::SUCCESS;
   } else {
     auto iter = table_map.find(table_name_.c_str());
@@ -59,14 +61,8 @@ RC FieldExpr::init(const std::vector<Table *> &tables, const std::unordered_map<
     }
     field_.set_table(table);
     field_.set_field(field_meta);
-
-    // TODO:表别名
-    // if (table_name_ != std::string(table->name())) {
-    //   if (tables.size() != 1) {
-    //     set_name(table_name_ + "." + field_name_);
-    //   }
-    // }
-
+    table_name_ = table->name();
+    field_name_ = field_meta->name();
     return RC::SUCCESS;
   }
 }
@@ -425,7 +421,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
       return rc;
     }
   } else {
-    if (RC::SUCCESS != (rc = right_->get_value(tuple, right_value))) {
+    if (RC::SUCCESS != (rc = right_->get_value(tuple, right_value))) {      // 要怎么拿到parent_tuple?
       LOG_ERROR("Predicate get right cell failed. RC = %d:%s", rc, strrc(rc));
       return rc;
     }
@@ -669,7 +665,7 @@ RC SubQueryExpression::get_value(Value &final_cell) const
     LOG_WARN("failed to get current record. rc=%s", strrc(rc));
     return RC::INTERNAL;
   }
-  rc = child_tuple->cell_at(0, final_cell);  // only need the first cell
+  rc = child_tuple->cell_at(0, final_cell);  // 返回的tuple一定只有一列
   return rc;
 }
 

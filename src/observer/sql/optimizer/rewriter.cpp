@@ -39,7 +39,7 @@ RC Rewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bool &change_made)
     }
 
     if (sub_change_made && !change_made) {
-      change_made = true;
+      change_made = true;       //predicatePushdowRewrite对predicateOperator了进行改写 
     }
   }
 
@@ -49,6 +49,7 @@ RC Rewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bool &change_made)
 
   std::vector<std::unique_ptr<LogicalOperator>> &child_opers = oper->children();
   for (auto &child_oper : child_opers) {
+    auto ty = child_oper->type();
     bool sub_change_made = false;
     rc = this->rewrite(child_oper, sub_change_made);
     if (rc != RC::SUCCESS) {

@@ -680,13 +680,14 @@ RC SubQueryExpression::close_sub_query() const
 
 RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db)
 {
+  RC rc = RC::SUCCESS;
   if (field_ != nullptr) {
-    field_->init(tables, table_map, db);
+    rc = field_->init(tables, table_map, db);
   } else {
     auto t = tables[0]->table_meta();
     field_ = new FieldExpr(tables[0], tables[0]->table_meta().field(1));
   }
-  return RC::SUCCESS;
+  return rc;
 }
 
 RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 

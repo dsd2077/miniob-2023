@@ -30,6 +30,7 @@ RC ExpressionRewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bool &cha
   bool sub_change_made = false;
   std::vector<std::unique_ptr<Expression>> &expressions = oper->expressions();
   for (std::unique_ptr<Expression> &expr : expressions) {
+    auto expr_type = expr->type();
     rc = rewrite_expression(expr, sub_change_made);
     if (rc != RC::SUCCESS) {
       break;
@@ -46,6 +47,7 @@ RC ExpressionRewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bool &cha
 
   std::vector<std::unique_ptr<LogicalOperator>> &child_opers = oper->children();
   for (std::unique_ptr<LogicalOperator> &child_oper : child_opers) {
+    auto ty = child_oper->type();
     bool sub_change_made = false;
     rc = rewrite(child_oper, sub_change_made);
     if (sub_change_made && !change_made) {

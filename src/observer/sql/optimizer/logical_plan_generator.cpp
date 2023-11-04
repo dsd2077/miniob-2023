@@ -40,6 +40,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/explain_stmt.h"
 #include "sql/stmt/update_stmt.h"
 #include "sql/stmt/order_by_stmt.h"
+#include <cstddef>
 #include <memory>
 
 using namespace std;
@@ -106,7 +107,10 @@ RC LogicalPlanGenerator::create_plan(
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
   }
-  std::unique_ptr<LogicalOperator> top_oper = std::move(table_oper);
+  std::unique_ptr<LogicalOperator> top_oper;
+  if (table_oper != nullptr) {
+    top_oper = std::move(table_oper);
+  }
 
   RC rc = RC::SUCCESS;
   // 构建inner_join_oper
@@ -228,7 +232,9 @@ RC LogicalPlanGenerator::create_plan(
   for (auto it = projects.begin(); it != projects.end(); it++) {    // select_attr 中的表达式转移到logical_oper中
     project_oper->add_project(*it);
   }
-  project_oper->add_child(std::move(top_oper));
+  if (top_oper != nullptr) {
+    project_oper->add_child(std::move(top_oper));
+  }
 
   logical_operator.swap(project_oper);
 

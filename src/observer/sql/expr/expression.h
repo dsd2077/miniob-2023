@@ -570,3 +570,97 @@ private:
   ValueExpr *value_ = nullptr;  // count(*) 
 };
 
+class FuncExpression : public Expression {
+public:
+  FuncExpression() = default;
+  FuncExpression(FuncType func_type, int param_size, Expression *param1, Expression *param2 , bool with_brace )
+      : func_type_(func_type), param_size_(param_size)
+  {
+    if (with_brace) {
+      set_with_brace();
+    }
+    if (param1 != nullptr) {
+      params_expr_.emplace_back(param1);
+    }
+    if (param2 != nullptr) {
+      params_expr_.emplace_back(param2);
+    }
+  }
+  virtual ~FuncExpression() = default;
+
+  RC get_func_length_value(const Tuple &tuple, Value &final_cell) const;
+
+  RC get_func_round_value(const Tuple &tuple, Value&final_cell) const;
+
+  RC get_func_data_format_value(const Tuple &tuple, Value &final_cell) const;
+
+  RC init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db=nullptr) override;
+
+  RC get_value(const Tuple &tuple, Value&final_cell) const override
+  {
+    RC rc = RC::SUCCESS;
+    switch (func_type_) {
+      case FUNC_LENGTH: {
+        rc = get_func_length_value(tuple, final_cell);
+        break;
+      }
+      case FUNC_ROUND: {
+        rc = get_func_round_value(tuple, final_cell);
+        break;
+      }
+      case FUNC_DATE_FORMAT: {
+        rc = get_func_data_format_value(tuple, final_cell);
+        break;
+      }
+      default:
+        break;
+    }
+    return rc;
+  }
+
+  ExprType type() const override
+  {
+    return ExprType::FUNC;
+  }
+
+  AttrType value_type() const override
+  {
+    switch (func_type_) {
+      case FUNC_LENGTH: {
+        return AttrType::INTS;
+      }
+      case FUNC_ROUND: {
+        return params_expr_.size() > 1 ? AttrType::FLOATS : AttrType::INTS;
+      }
+      case FUNC_DATE_FORMAT: {
+        return AttrType::DATES;
+      }
+      default: {
+        return AttrType::UNDEFINED;
+      }
+    }
+  }
+
+  
+
+
+  FuncType get_func_type()
+  {
+    return func_type_;
+  }
+
+  std::vector<Expression *> get_params()
+  {
+    return params_expr_;
+  }
+
+  int get_param_size()
+  {
+    return param_size_;
+  }
+
+private:
+  FuncType func_type_;
+  std::vector<Expression *> params_expr_;
+  int param_size_;
+};

@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/project_logical_operator.h"
 #include "src/observer/sql/stmt/select_stmt.h"
 #include "storage/db/db.h"
+#include <iomanip>
 #include <regex>
 
 using namespace std;
@@ -768,4 +769,238 @@ void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFun
       break;
   }
   return;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// AggrFuncType
+RC FuncExpression::get_func_length_value(const Tuple &tuple, Value &final_cell) const
+{
+  Expression *param_expr = *params_expr_.begin();
+  Value param_cell;
+  param_expr->get_value(tuple, param_cell);
+  // unsupported not chars
+  if (param_cell.attr_type() != CHARS) {
+    return RC::INTERNAL;
+  }
+  std::string result = param_cell.get_string();
+  final_cell.set_int(result.size());
+  return RC::SUCCESS;
+}
+
+RC FuncExpression::get_func_round_value(const Tuple &tuple, Value &final_cell) const
+{
+  if (param_size_ > 1) {
+    Expression *param_expr = params_expr_[0];
+    Expression *param_expr_precision = params_expr_[1];
+    Value param_expr_cell;
+    Value param_expr_precision_cell;
+    param_expr->get_value(tuple, param_expr_cell);
+    param_expr_precision->get_value(tuple, param_expr_precision_cell);
+    if (param_expr_cell.attr_type() != FLOATS) {
+      return RC::INTERNAL;
+    }
+    if (param_expr_precision_cell.attr_type() != INTS) {
+      return RC::INTERNAL;
+    }
+    float cell_float = param_expr_cell.get_float();
+    int cell_precision = param_expr_precision_cell.get_int();
+    auto inner_round = [](float f, int precision) {
+      // std::cout << "Before: " << std::setprecision(12) << f << std::endl;
+      std::stringstream ss;
+      ss << std::fixed << std::setprecision(precision) << f;
+      ss >> f;
+      // std::cout << "After: " << std::setprecision(12) << f << std::endl;
+      return f;
+    };
+    *(uint32_t *)&cell_float += 1;        // TODO：这行代码的作用
+    cell_float = inner_round(cell_float, cell_precision);
+    // std::cout << cell_float << std::endl;
+    float *result_float = new float(cell_float);
+    final_cell.set_float(cell_float);
+  } else {
+    Expression *param_expr = *params_expr_.begin();
+    Value param_expr_cell;
+    param_expr->get_value(tuple, param_expr_cell);
+    if (param_expr_cell.attr_type() != FLOATS) {
+      return RC::INTERNAL;
+    }
+    float cell_float = param_expr_cell.get_float();
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(0) << cell_float;
+    ss >> cell_float;
+    final_cell.set_float(cell_float);
+  }
+  return RC::SUCCESS;
+}
+
+RC FuncExpression::get_func_data_format_value(const Tuple &tuple, Value &final_cell) const
+{
+  Expression *date_expr = params_expr_[0];
+  Expression *format_expr = params_expr_[1];
+  Value date_expr_cell;
+  Value format_expr_cell;
+  date_expr->get_value(tuple, date_expr_cell);
+  format_expr->get_value(tuple, format_expr_cell);
+  if (date_expr_cell.attr_type() != DATES) {
+    return RC::INTERNAL;
+  }
+  if (format_expr_cell.attr_type() != CHARS) {
+    return RC::INTERNAL;
+  }
+  int cell_date = *(int *)(date_expr_cell.data());
+  char *cell_format_chars = (char *)(format_expr_cell.data());
+  std::string result_date_str;
+  int year = cell_date / 10000;
+  int month = (cell_date / 100) % 100;
+  int day = cell_date % 100;
+  for (size_t i = 0; i < strlen(cell_format_chars); i++) {
+    // A ~ z
+    if (65 <= cell_format_chars[i] && cell_format_chars[i] <= 122) {
+      switch (cell_format_chars[i]) {
+        case 'Y': {
+          char tmp[5];
+          sprintf(tmp, "%d", year);
+          result_date_str += tmp;
+          break;
+        }
+        case 'y': {
+          char tmp[5];
+          sprintf(tmp, "%d", year % 100);
+          if (0 <= (year % 100) && (year % 100) <= 9) {
+            result_date_str += "0";
+          }
+          result_date_str += tmp;
+          break;
+        }
+        case 'M': {
+          switch (month) {
+            case 1: {
+              result_date_str += "January";
+              break;
+            }
+            case 2: {
+              result_date_str += "February";
+              break;
+            }
+            case 3: {
+              result_date_str += "March";
+              break;
+            }
+            case 4: {
+              result_date_str += "April";
+              break;
+            }
+            case 5: {
+              result_date_str += "May";
+              break;
+            }
+            case 6: {
+              result_date_str += "June";
+              break;
+            }
+            case 7: {
+              result_date_str += "July";
+              break;
+            }
+            case 8: {
+              result_date_str += "August";
+              break;
+            }
+            case 9: {
+              result_date_str += "September";
+              break;
+            }
+            case 10: {
+              result_date_str += "October";
+              break;
+            }
+            case 11: {
+              result_date_str += "November";
+              break;
+            }
+            case 12: {
+              result_date_str += "December";
+              break;
+            }
+            default: {
+              return RC::INTERNAL;
+              break;
+            }
+          }
+          break;
+        }
+        case 'm': {
+          char tmp[3];
+          sprintf(tmp, "%d", month);
+          if (0 <= month && month <= 9) {
+            result_date_str += "0";
+          }
+          result_date_str += tmp;
+          break;
+        }
+        case 'D': {
+          char tmp[3];
+          sprintf(tmp, "%d", day);
+          if (10 <= day && day <= 20) {
+            result_date_str += tmp;
+            result_date_str += "th";
+          } else {
+            switch (day % 10) {
+              case 1: {
+                result_date_str += tmp;
+                result_date_str += "st";
+                break;
+              }
+              case 2: {
+                result_date_str += tmp;
+                result_date_str += "nd";
+                break;
+              }
+              case 3: {
+                result_date_str += tmp;
+                result_date_str += "rd";
+                break;
+              }
+              default: {
+                result_date_str += tmp;
+                result_date_str += "th";
+                break;
+              }
+            }
+          }
+          break;
+        }
+        case 'd': {
+          char tmp[3];
+          sprintf(tmp, "%d", day);
+          if (0 <= day && day <= 9) {
+            result_date_str += "0";
+          }
+          result_date_str += tmp;
+          break;
+        }
+        default: {
+          result_date_str += cell_format_chars[i];
+          break;
+        }
+      }
+    } else if (cell_format_chars[i] != '%') {
+      result_date_str += cell_format_chars[i];
+    }
+  }
+  // std::cout << result_date_str << std::endl;
+  final_cell.set_date(strdup(result_date_str.c_str()));
+  return RC::SUCCESS;
+}
+
+RC FuncExpression::init(
+    const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db)
+{
+  RC rc = RC::SUCCESS;
+  for (auto expr : params_expr_) {
+    rc = expr->init(tables, table_map, db);
+  }
+  return rc;
 }

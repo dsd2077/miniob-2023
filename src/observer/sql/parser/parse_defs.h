@@ -93,6 +93,7 @@ enum class ExprType
   AGGRFUNC,     /// 集合函数
   SUBQUERY,     ///子查询
   SUBLIST,      ///子查询列表
+  FUNC,          ///函数
   EXP_TYPE_NUM ,  /// 
 };
 

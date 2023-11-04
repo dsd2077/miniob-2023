@@ -128,6 +128,9 @@ MIN                                     RETURN_TOKEN(AGGR_MIN);
 SUM                                     RETURN_TOKEN(AGGR_SUM);
 AVG                                     RETURN_TOKEN(AGGR_AVG);
 COUNT                                   RETURN_TOKEN(AGGR_COUNT);
+LENGTH                                  RETURN_TOKEN(LENGTH);
+ROUND                                   RETURN_TOKEN(ROUND);
+DATE_FORMAT                             RETURN_TOKEN(DATE_FORMAT);
 
 
 INT                                     RETURN_TOKEN(INT_T);    

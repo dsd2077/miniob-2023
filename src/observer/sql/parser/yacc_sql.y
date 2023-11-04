@@ -120,6 +120,9 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         AGGR_AVG
         AGGR_COUNT
         UNIQUE  // T11
+        LENGTH
+        ROUND
+        DATE_FORMAT
 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
@@ -227,6 +230,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <expression>          arithmetic_expr
 %type <expression>          sub_select_list
 %type <expression>          aggr_func_expr
+%type <expression>          func_expr
 %type <aggr_func_type>      aggr_func_type
 
 
@@ -590,7 +594,14 @@ set_attr_list:
     ;
 
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr FROM from inner_join_list where order_by
+    SELECT select_attr {
+      $$ = new ParsedSqlNode(SCF_SELECT);
+      if ($2 != nullptr) {
+        $$->selection.attributes.swap(*$2);
+        delete $2;
+      }
+    }
+    | SELECT select_attr FROM from inner_join_list where order_by
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -1011,9 +1022,9 @@ unary_expr:
       $$ = $2;
       $$->set_with_brace();
     }
-    // | func_expr {
-    //   $$ = $1;
-    // }
+    | func_expr {
+      $$ = $1;
+    }
     | aggr_func_expr {
       $$ = $1;
     }
@@ -1085,6 +1096,21 @@ sub_select_list:
       $$->set_with_brace();
     }
     ;
+
+func_expr:
+  LENGTH LBRACE add_expr RBRACE {
+    $$ = new FuncExpression(FUNC_LENGTH, 1, $3, nullptr, true);
+  }
+  | ROUND LBRACE add_expr RBRACE {
+    $$ = new FuncExpression(FUNC_ROUND, 1, $3, nullptr, true);
+  }
+  | ROUND LBRACE add_expr COMMA add_expr RBRACE {
+    $$ = new FuncExpression(FUNC_ROUND, 2, $3, $5, true);
+  }
+  | DATE_FORMAT LBRACE add_expr COMMA add_expr RBRACE {
+    $$ = new FuncExpression(FUNC_DATE_FORMAT, 2, $3, $5, true);
+  }
+  ;
 
 comp_op:
       EQ { $$ = EQUAL_TO; }

@@ -327,7 +327,13 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<Lo
     return rc;
   }
 
-  unique_ptr<LogicalOperator> update_oper(new UpdateLogicalOperator(table, update_stmt->value(), update_stmt->attribute_name()));
+  // 获取stmt中的属性和值
+  std::vector<std::string> attrs;
+  std::vector<Value> vals;
+  update_stmt->attributes_names(attrs);
+  update_stmt->values(vals);
+
+  unique_ptr<LogicalOperator> update_oper(new UpdateLogicalOperator(table, vals, attrs)); // update operator
 
   if (predicate_oper) {
     predicate_oper->add_child(std::move(table_get_oper));

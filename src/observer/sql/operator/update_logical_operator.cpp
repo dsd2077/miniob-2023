@@ -9,6 +9,6 @@
 
 #include "sql/operator/update_logical_operator.h"
 
-UpdateLogicalOperator::UpdateLogicalOperator(Table *table, Value values, std::string attribute_name) 
-: table_(table), values_(values), attribute_name_(attribute_name)
+UpdateLogicalOperator::UpdateLogicalOperator(Table *table, std::vector<Value> values, std::vector<std::string> attributes_names) 
+: table_(table), values_(values), attributes_names_(attributes_names)
 {}

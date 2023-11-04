@@ -17,8 +17,9 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/filter_stmt.h"
 #include "storage/db/db.h"
 
-UpdateStmt::UpdateStmt(Table *table, FilterStmt *filter_stmt, Value value, std::string attribute_name)
-    : table_(table), filter_stmt_(filter_stmt), value_(value), attribute_name_(attribute_name)
+UpdateStmt::UpdateStmt(Table *table, FilterStmt *filter_stmt, 
+    std::vector<Value> values, std::vector<std::string> attributes_names)
+    : table_(table), filter_stmt_(filter_stmt), values_(values), attributes_names_(attributes_names)
 {}
 
 RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
@@ -37,26 +38,56 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
   }
 
   // check the fields number
-  Value value = update.value;
+  // Value value = update.value;
   const TableMeta &table_meta = table->table_meta();
+
+  std::vector<Value> values;
+  std::vector<std::string> attrs;
+  for(int i = 0 ; i < update.set_cols.size() ; i ++ ) {
+    attrs.emplace_back(update.set_cols[i].attribute_name);
+    values.emplace_back(update.set_cols[i].value);
+  }
+
+  // 获取fields
+  std::vector<FieldMeta> fields;
+  table_meta.fields_by_attrs(fields, attrs);
+
+  if(fields.size() != attrs.size()) {
+    LOG_WARN("field is not legal!");
+    return RC::FILE_NOT_EXIST;
+  }
+
+  // 判断属性类型
+  for(int i = 0 ; i < fields.size() ; i ++ ) {
+    const AttrType field_type = fields[i].type();
+    const AttrType value_type = values[i].attr_type();
+    if (field_type == DATES && !common::is_valid_date(values[i].get_int())) {
+      return RC::INVALID_ARGUMENT;
+    }
+    if (field_type != value_type) {
+      LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
+            table_name, fields[i].name(), field_type, value_type);
+      return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+    }
+  }
 
   // check fields type
   // 要根据属性的名字取获取对应的field_meta
-  const FieldMeta *field_meta = table_meta.field(update.attribute_name.c_str());
-  if (nullptr == field_meta) {
-    LOG_WARN("field =%s not exist in table=%s", update.attribute_name.c_str(), table_name);
-    return RC::FILE_NOT_EXIST;
-  }
-  const AttrType field_type = field_meta->type();
-  const AttrType value_type = value.attr_type();
-  if (field_type == DATES && !common::is_valid_date(value.get_int())) {
-    return RC::INVALID_ARGUMENT;
-  }
-  if (field_type != value_type) {
-    LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-          table_name, field_meta->name(), field_type, value_type);
-    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-  }
+  // const FieldMeta *field_meta = table_meta.field(update.attribute_name.c_str());
+  // if (nullptr == field_meta) {
+  //   LOG_WARN("field =%s not exist in table=%s", update.attribute_name.c_str(), table_name);
+  //   return RC::FILE_NOT_EXIST;
+  // }
+  // const AttrType field_type = field_meta->type();
+  // const AttrType value_type = value.attr_type();
+  // if (field_type == DATES && !common::is_valid_date(value.get_int())) {
+  //   return RC::INVALID_ARGUMENT;
+  // }
+  // if (field_type != value_type) {
+  //   LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
+  //         table_name, field_meta->name(), field_type, value_type);
+  //   return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  // }
 
   // table_map的作用?
   std::unordered_map<std::string, Table *> table_map;
@@ -74,6 +105,6 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
   }
 
   // everything alright
-  stmt = new UpdateStmt(table, filter_stmt, value, update.attribute_name);
+  stmt = new UpdateStmt(table, filter_stmt, values, attrs);
   return RC::SUCCESS;
 }

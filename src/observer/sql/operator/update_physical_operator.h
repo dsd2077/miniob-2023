@@ -21,8 +21,8 @@
 class UpdatePhysicalOperator : public PhysicalOperator
 {
 public:
-  UpdatePhysicalOperator(Table *table, Value &&values, std::string attribute_name) 
-  : table_(table), value_(std::move(values)), attribute_name_(attribute_name) {}
+  UpdatePhysicalOperator(Table *table, std::vector<Value> values, std::vector<std::string> attributes_names) 
+  : table_(table), values_(values), attributes_names_(attributes_names) {}
 
   virtual ~UpdatePhysicalOperator() = default;
 
@@ -39,6 +39,9 @@ public:
 private:
   Table *table_ = nullptr;
   Trx *trx_ = nullptr;
-  Value value_;
-  std::string attribute_name_;
+  // Value value_;
+  // std::string attribute_name_;
+
+  std::vector<Value> values_;   // 值
+  std::vector<std::string> attributes_names_; // 属性名
 };

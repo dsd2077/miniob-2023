@@ -186,17 +186,28 @@ struct ConditionSqlNode
 };
 
 /**
+ * @brief update set子句中的属性和值
+ * @ingroup SQLParser
+*/
+struct SetSqlNode
+{
+  std::string       attribute_name; // update set子句的属性名
+  Value             value;          // update set子句的属性值
+};
+
+
+/**
  * @brief 描述一个update语句
  * @ingroup SQLParser
  */
 struct UpdateSqlNode
 {
   std::string                   relation_name;         ///< Relation to update
-  std::string                   attribute_name;        ///< 更新的字段，仅支持一个字段
-  Value                         value;                 ///< 更新的值，仅支持一个字段
+  // std::string                   attribute_name;        ///< 更新的字段，仅支持一个字段
+  // Value                         value;                 ///< 更新的值，仅支持一个字段
+  std::vector<SetSqlNode>       set_cols;       ///< 更新的所有字段
   Expression*                  conditions = nullptr;
 };
-
 /**
  * @brief 描述一个属性
  * @ingroup SQLParser

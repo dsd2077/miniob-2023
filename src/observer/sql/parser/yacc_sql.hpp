@@ -152,6 +152,8 @@ union YYSTYPE
   Relation *                        relation_item;
   std::vector<Relation> *           relation_list;
 
+  std::vector<SetSqlNode> *         set_attrs;
+
   char *                            string;
   int                               number;
   float                             floats;
@@ -163,7 +165,7 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
-#line 167 "yacc_sql.hpp"
+#line 169 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

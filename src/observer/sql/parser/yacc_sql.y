@@ -142,6 +142,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Relation *                        relation_item;
   std::vector<Relation> *           relation_list;
 
+  std::vector<SetSqlNode> *         set_attrs;
+
   char *                            string;
   int                               number;
   float                             floats;
@@ -182,6 +184,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_list>           attr_list_index
 
 %type <expression_list>     expression_list
+%type <set_attrs>           set_attr_list
 %type <sql_node>            calc_stmt
 %type <sql_node>            select_stmt     
 %type <sql_node>            insert_stmt
@@ -225,7 +228,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <expression>          mul_expr
 %type <expression>          aggr_func_expr
 %type <aggr_func_type>      aggr_func_type
-
 
 
 
@@ -535,19 +537,50 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where 
+    UPDATE ID SET ID EQ value set_attr_list where 
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-      $$->update.attribute_name = $4;
-      $$->update.value = *$6;
-      if ($7 != nullptr) {
-        $$->update.conditions = $7;
+
+      SetSqlNode *col = new SetSqlNode;
+      col->attribute_name = $4;
+      col->value = *$6;
+      
+      std::vector<SetSqlNode> *sets = $7;
+      if (nullptr != $7) {
+        $$->update.set_cols.swap(*sets);
+      }
+      $$->update.set_cols.emplace_back(*col);
+
+      if ($8 != nullptr) {
+        $$->update.conditions = $8;
       }
       free($2);
       free($4);
     }
     ;
+
+set_attr_list:
+    /* empty */
+    {
+      $$ = nullptr;
+    }
+    | COMMA ID EQ value set_attr_list
+    {
+      $$ = new std::vector<SetSqlNode>;
+      SetSqlNode *col = new SetSqlNode;
+      col->attribute_name = $2;
+      col->value = *$4;
+      
+      std::vector<SetSqlNode> *sets = $5;
+      if(nullptr != sets) {
+        $$->swap(*sets);
+      }
+      $$->emplace_back(*col);
+      free($2);
+    }
+    ;
+
 select_stmt:        /*  select 语句的语法解析树*/
     SELECT select_attr FROM from inner_join_list where order_by
     {

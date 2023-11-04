@@ -259,7 +259,9 @@ RC RecordPageHandler::delete_record(const RID *rid)
   }
 }
 
-RC RecordPageHandler::update_record(const RID *rid, const FieldMeta *field_meta, Value &value) {
+// 修改为支持多字段更新
+RC RecordPageHandler::update_record(const RID *rid, 
+      std::vector<FieldMeta> &fields_metas, std::vector<Value> &values) {
   ASSERT(readonly_ == false, "cannot delete record from page while the page is readonly");
 
   if (rid->slot_num >= page_header_->record_capacity) {
@@ -268,7 +270,10 @@ RC RecordPageHandler::update_record(const RID *rid, const FieldMeta *field_meta,
   }
   // 需不需要加锁？
   char *record_data = get_record_data(rid->slot_num);
-  memcpy(record_data + field_meta->offset(), value.data(), field_meta->len());
+  for(int i = 0 ; i < fields_metas.size() ; i ++ ) {
+    memcpy(record_data + fields_metas[i].offset(), values[i].data(), fields_metas[i].len());  // 按照字段写记录
+  }
+  // memcpy(record_data + field_meta->offset(), value.data(), field_meta->len());
   return RC::SUCCESS;
 }
 
@@ -464,15 +469,16 @@ RC RecordFileHandler::delete_record(const RID *rid)
   return rc;
 }
 
-RC RecordFileHandler::update_record(const RID *rid, const FieldMeta *field_meta, Value &value) {
+// 更新在文件记录中的
+RC RecordFileHandler::update_record(const RID *rid, std::vector<FieldMeta> &fields_metas, std::vector<Value> &values) {
   RC rc = RC::SUCCESS;
 
-  RecordPageHandler page_handler;
+  RecordPageHandler page_handler;   // FileHandler去操作PageHandler，这似乎蕴含了一种编程思想（代理模式）,,,
   if ((rc = page_handler.init(*disk_buffer_pool_, rid->page_num, false /*readonly*/)) != RC::SUCCESS) {
     LOG_ERROR("Failed to init record page handler.page number=%d. rc=%s", rid->page_num, strrc(rc));
     return rc;
   }
-  rc = page_handler.update_record(rid, field_meta, value);
+  rc = page_handler.update_record(rid, fields_metas, values);
   // page_handler.cleanup();
   return rc;
 }

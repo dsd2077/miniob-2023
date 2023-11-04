@@ -68,7 +68,7 @@ public:
 
   RC insert_record(Table *table, Record &record) override;
   RC delete_record(Table *table, Record &record) override;
-  RC update_record(Table *table, Record &record, Value &value, std::string &attribute_name) override;
+  RC update_record(Table *table, Record &record, std::vector<Value> &values, std::vector<std::string> &attributes_names) override;
 
   /**
    * @brief 当访问到某条数据时，使用此函数来判断是否可见，或者是否有访问冲突

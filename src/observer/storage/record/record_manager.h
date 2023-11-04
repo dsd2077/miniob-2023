@@ -187,7 +187,8 @@ public:
    *
    * @param rid 要更新的记录标识
    */
-  RC update_record(const RID *rid, const FieldMeta *field_meta, Value &value);
+  // RC update_record(const RID *rid, const FieldMeta *field_meta, Value &value);
+  RC update_record(const RID *rid, std::vector<FieldMeta> &fields_metas, std::vector<Value> &values);
 
   /**
    * @brief 获取指定位置的记录数据
@@ -281,7 +282,8 @@ public:
    * @param field_meta 待修改字段的元数据
    * @param field_meta 待修改值
    */
-  RC update_record(const RID *rid, const FieldMeta* field_meta, Value &value);
+  // RC update_record(const RID *rid, const FieldMeta* field_meta, Value &value);
+  RC update_record(const RID *rid, std::vector<FieldMeta> &fields_metas, std::vector<Value> &values);
 
   /**
    * @brief 插入一个新的记录到指定文件中，并返回该记录的标识符

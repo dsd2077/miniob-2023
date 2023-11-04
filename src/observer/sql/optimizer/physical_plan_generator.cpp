@@ -331,7 +331,12 @@ RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &update_oper, std::u
     }
   }
 
-  oper = unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(update_oper.table(),std::move(update_oper.value()), update_oper.attribute_name()));
+  std::vector<std::string> attrs;
+  std::vector<Value> vals;
+  update_oper.attributes_names(attrs);
+  update_oper.values(vals);
+
+  oper = unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(update_oper.table(),vals, attrs));
 
   oper->setParentOperType(parent_oper_type);
 

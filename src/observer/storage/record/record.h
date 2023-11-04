@@ -100,7 +100,7 @@ public:
     }
   }
 
-  Record(const Record &other)
+  Record(const Record &other) // Record的拷贝构造函数，这里可以自定义拷贝的深度
   {
     rid_   = other.rid_;
     data_  = other.data_;

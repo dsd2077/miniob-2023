@@ -146,7 +146,8 @@ public:
 
   virtual RC insert_record(Table *table, Record &record) = 0;
   virtual RC delete_record(Table *table, Record &record) = 0;
-  virtual RC update_record(Table *table, Record &record, Value &value, std::string &attribute_name) = 0;
+  // virtual RC update_record(Table *table, Record &record, Value &value, std::string &attribute_name) = 0;
+  virtual RC update_record(Table *table, Record &record, std::vector<Value> &values, std::vector<std::string> &attributes_names) = 0; // 多列更新
   virtual RC visit_record(Table *table, Record &record, bool readonly) = 0;
   virtual RC start_if_need() = 0;
   virtual RC commit() = 0;

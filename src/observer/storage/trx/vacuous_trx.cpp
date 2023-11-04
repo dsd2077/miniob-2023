@@ -61,8 +61,9 @@ RC VacuousTrx::delete_record(Table *table, Record &record)
 {
   return table->delete_record(record);
 }
-RC VacuousTrx::update_record(Table *table, Record &record, Value &value, std::string &attribute_name) {
-  return table->update_record(record, value, attribute_name);
+RC VacuousTrx::update_record(Table *table, Record &record, std::vector<Value> &values, 
+      std::vector<std::string> &attributes_names) {
+  return table->update_record(record, values, attributes_names);
 }
 
 RC VacuousTrx::visit_record(Table *table, Record &record, bool readonly)

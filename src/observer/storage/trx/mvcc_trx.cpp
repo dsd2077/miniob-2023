@@ -185,7 +185,8 @@ RC MvccTrx::delete_record(Table * table, Record &record)
   return RC::SUCCESS;
 }
 
-RC MvccTrx::update_record(Table *table, Record &record, Value &value, std::string &attribute_name) {
+RC MvccTrx::update_record(Table *table, Record &record, 
+      std::vector<Value> &values, std::vector<std::string> &attributes_names) {
   return RC::SUCCESS;
 }
 

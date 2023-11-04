@@ -25,7 +25,7 @@ See the Mulan PSL v2 for more details. */
 RC FilterStmt::create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *table_map,
   Expression *conditions, FilterStmt *&stmt)
 {
-  RC rc = RC::SUCCESS;
+RC rc = RC::SUCCESS;
   ConjunctionExpr* conjunction_expr = dynamic_cast<ConjunctionExpr*>(conditions);
   assert(conditions != nullptr);
 

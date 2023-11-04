@@ -25,7 +25,9 @@ using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
 {
-  return tuple.find_cell(TupleCellSpec(table_name(), field_name()), value);
+  RC rc = tuple.find_cell(TupleCellSpec(table_name(), field_name()), value);
+  try_get_negtive_value(value);
+  return rc;
 }
 RC FieldExpr::init(const std::vector<Table *> &tables, const std::unordered_map<std::string, Table *> &table_map, Db *db) {
   // bool with_brace = expr->with_brace;       // 括号，什么时候需要考虑括号？
@@ -350,6 +352,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
     sub_query->close_sub_query();
     bool res = CompOp::EXISTS_OP == comp_ ? (RC::SUCCESS == tmp_rc) : (RC::RECORD_EOF == tmp_rc);
     value.set_boolean(res);
+    try_get_negtive_value(value);
     return RC::SUCCESS;
   }
 
@@ -361,6 +364,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
     }
     // 考虑none
     if (left_value.is_null()) {
+      try_get_negtive_value(value);
       value.set_boolean(false);  // null don't in/not in any list
       return RC::SUCCESS;
     }
@@ -395,6 +399,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
     };
     bool res = CompOp::IN_OP == comp_ ? left_value.in_cells(right_values)
                                       : (has_null(right_values) ? false : left_value.not_in_cells(right_values));
+    try_get_negtive_value(value);
     value.set_boolean(res);
     return RC::SUCCESS;
   }
@@ -451,18 +456,21 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
   if (CompOp::IS_NULL == comp_) {
     assert(right_value.is_null());
     bool res = left_value.is_null();
+    try_get_negtive_value(value);
     value.set_boolean(res);
     return RC::SUCCESS;
   }
   if (CompOp::IS_NOT_NULL == comp_) {
     assert(right_value.is_null());
     bool res = !left_value.is_null();
+    try_get_negtive_value(value);
     value.set_boolean(res);
     return RC::SUCCESS;
   }
 
     // 1. check null
   if (left_value.is_null() || right_value.is_null()) {
+    try_get_negtive_value(value);
     value.set_boolean(false);
     return RC::SUCCESS;
   }
@@ -470,6 +478,7 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
   bool bool_value = false;
   rc = compare_value(left_value, right_value, bool_value);
   if (rc == RC::SUCCESS) {
+    try_get_negtive_value(value);
     value.set_boolean(bool_value);
   }
   return rc;
@@ -486,6 +495,7 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
 {
   RC rc = RC::SUCCESS;
   if (children_.empty()) {
+    try_get_negtive_value(value);
     value.set_boolean(true);
     return rc;
   }
@@ -499,12 +509,14 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
     }
     bool bool_value = tmp_value.get_boolean();
     if ((conjunction_type_ == Type::AND && !bool_value) || (conjunction_type_ == Type::OR && bool_value)) {
+      try_get_negtive_value(value);
       value.set_boolean(bool_value);
       return rc;
     }
   }
 
   bool default_value = (conjunction_type_ == Type::AND);
+  try_get_negtive_value(value);
   value.set_boolean(default_value);
   return rc;
 }
@@ -621,7 +633,9 @@ RC ArithmeticExpr::get_value(const Tuple &tuple, Value &value) const
     LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
     return rc;
   }
-  return calc_value(left_value, right_value, value);
+  rc =  calc_value(left_value, right_value, value);
+  try_get_negtive_value(value);
+  return rc;
 }
 
 RC ArithmeticExpr::try_get_value(Value &value) const
@@ -719,7 +733,9 @@ RC AggrFuncExpression::init(const std::vector<Table *> &tables, const std::unord
 RC AggrFuncExpression::get_value(const Tuple &tuple, Value &cell) const 
 {
   TupleCellSpec temp(field_->table_name(), field_->field_name(), nullptr, type_);
-  return tuple.find_cell(temp, cell);
+  RC rc =  tuple.find_cell(temp, cell);
+  try_get_negtive_value(cell);
+  return rc;
 }
 
 void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFuncExpression *> &aggrfunc_exprs) 
@@ -735,9 +751,9 @@ void AggrFuncExpression::get_aggrfuncexprs(Expression *expr, std::vector<AggrFun
       break;
     }
     case ExprType::ARITHMETIC: {
-      ArithmeticExpr *expr = dynamic_cast<ArithmeticExpr *>(expr);
-      get_aggrfuncexprs(expr->left().get(), aggrfunc_exprs);
-      get_aggrfuncexprs(expr->right().get(), aggrfunc_exprs);
+      ArithmeticExpr *arith_expr = dynamic_cast<ArithmeticExpr *>(expr);
+      get_aggrfuncexprs(arith_expr->left().get(), aggrfunc_exprs);
+      get_aggrfuncexprs(arith_expr->right().get(), aggrfunc_exprs);
       break;
     }
     default:

@@ -48,18 +48,19 @@ void gen_project_name(const Expression *expr, bool is_single_table, std::string 
     result_name = expr->name();
     return;
   }
-
-  // if (expr->with_brace()) {
-  //   result_name += '(';
-  // }
+  if (expr->is_negtive()) {
+    result_name += '-';
+  }
+  if (expr->with_brace()) {
+    result_name += '(';
+  }
   switch (expr->type()) {
     case ExprType::FIELD: {
       FieldExpr *fexpr = (FieldExpr *)expr;
-      const Field &field = fexpr->field();
       if (!is_single_table) {
-        result_name += std::string(field.table_name()) + '.' + std::string(field.field_name());
+        result_name += std::string(fexpr->table_name()) + '.' + std::string(fexpr->field_name());
       } else {
-        result_name += std::string(field.field_name());
+        result_name += std::string(fexpr->field_name());
       }
       break;
     }
@@ -67,22 +68,25 @@ void gen_project_name(const Expression *expr, bool is_single_table, std::string 
       ValueExpr *vexpr = (ValueExpr *)expr;
       Value cell;
       vexpr->get_value(cell);
-      std::stringstream ss;
       std::string str = cell.to_string();
       result_name += str;
       break;
     }
-    // case ExprType::ARITHMETIC: {
-    //   ArithmeticExpr *bexpr = (ArithmeticExpr *)expr;
-    //   if (bexpr->is_minus()) {
-    //     result_name += '-';
-    //   } else {
-    //     gen_project_name(bexpr->get_left(), is_single_table, result_name);
-    //     result_name += bexpr->get_op_char();
-    //   }
-    //   gen_project_name(bexpr->get_right(), is_single_table, result_name);
-    //   break;
-    // }
+    case ExprType::ARITHMETIC: {
+      ArithmeticExpr *bexpr = (ArithmeticExpr *)expr;
+      gen_project_name(bexpr->left().get(), is_single_table, result_name);
+      result_name += bexpr->get_op_char();
+      gen_project_name(bexpr->right().get(), is_single_table, result_name);
+      break;
+    }
+    case ExprType::SUBLIST: {
+      ListExpression *list_expr = (ListExpression *)expr;
+      auto &values = list_expr->get_tuple_cells();
+      std::stringstream ss;
+      std::string str = values[0].to_string() ;
+      result_name += str;
+      break;
+    }
     case ExprType::AGGRFUNC: {
       AggrFuncExpression *afexpr = (AggrFuncExpression *)expr;
       result_name += afexpr->get_func_name();
@@ -136,9 +140,9 @@ void gen_project_name(const Expression *expr, bool is_single_table, std::string 
     default:
       break;
   }
-  // if (expr->with_brace()) {
-  //   result_name += ')';
-  // }
+  if (expr->with_brace()) {
+    result_name += ')';
+  }
 }
 
 RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unordered_map<std::string, Table *> &parent_table_map, Stmt *&stmt)

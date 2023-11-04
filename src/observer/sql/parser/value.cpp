@@ -414,6 +414,15 @@ void Value::set_negtive() {
       set_float(-get_float());
       break;
     }
+    case BOOLEANS: {
+      set_boolean(-get_boolean());
+      break;
+    }
+    case CHARS: {
+      float temp = common::stringToNumber(str_value_);
+      set_float(temp);
+      set_type(FLOATS);
+    }
     default: {
       LOG_ERROR("unsupported negtive value type! type = %d", attr_type_);
     }

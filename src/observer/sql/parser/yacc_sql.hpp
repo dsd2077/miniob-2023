@@ -100,30 +100,31 @@ extern int yydebug;
     GE = 301,                      /* GE  */
     NE = 302,                      /* NE  */
     INNER = 303,                   /* INNER  */
-    JOIN = 304,                    /* JOIN  */
-    ORDER = 305,                   /* ORDER  */
-    BY = 306,                      /* BY  */
-    OR = 307,                      /* OR  */
-    IN = 308,                      /* IN  */
-    EXISTS = 309,                  /* EXISTS  */
-    IS = 310,                      /* IS  */
-    NOT = 311,                     /* NOT  */
-    NULL_VALUE = 312,              /* NULL_VALUE  */
-    LIKE_T = 313,                  /* LIKE_T  */
-    NOT_LIKE_T = 314,              /* NOT_LIKE_T  */
-    AS = 315,                      /* AS  */
-    AGGR_MAX = 316,                /* AGGR_MAX  */
-    AGGR_MIN = 317,                /* AGGR_MIN  */
-    AGGR_SUM = 318,                /* AGGR_SUM  */
-    AGGR_AVG = 319,                /* AGGR_AVG  */
-    AGGR_COUNT = 320,              /* AGGR_COUNT  */
-    UNIQUE = 321,                  /* UNIQUE  */
-    NUMBER = 322,                  /* NUMBER  */
-    FLOAT = 323,                   /* FLOAT  */
-    ID = 324,                      /* ID  */
-    DATE = 325,                    /* DATE  */
-    SSS = 326,                     /* SSS  */
-    UMINUS = 327                   /* UMINUS  */
+    SUB = 304,                     /* SUB  */
+    JOIN = 305,                    /* JOIN  */
+    ORDER = 306,                   /* ORDER  */
+    BY = 307,                      /* BY  */
+    OR = 308,                      /* OR  */
+    IN = 309,                      /* IN  */
+    EXISTS = 310,                  /* EXISTS  */
+    IS = 311,                      /* IS  */
+    NOT = 312,                     /* NOT  */
+    NULL_VALUE = 313,              /* NULL_VALUE  */
+    LIKE_T = 314,                  /* LIKE_T  */
+    NOT_LIKE_T = 315,              /* NOT_LIKE_T  */
+    AS = 316,                      /* AS  */
+    AGGR_MAX = 317,                /* AGGR_MAX  */
+    AGGR_MIN = 318,                /* AGGR_MIN  */
+    AGGR_SUM = 319,                /* AGGR_SUM  */
+    AGGR_AVG = 320,                /* AGGR_AVG  */
+    AGGR_COUNT = 321,              /* AGGR_COUNT  */
+    UNIQUE = 322,                  /* UNIQUE  */
+    NUMBER = 323,                  /* NUMBER  */
+    FLOAT = 324,                   /* FLOAT  */
+    ID = 325,                      /* ID  */
+    DATE = 326,                    /* DATE  */
+    SSS = 327,                     /* SSS  */
+    UMINUS = 328                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -132,7 +133,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 126 "yacc_sql.y"
+#line 127 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   CompOp                            comp;
@@ -165,7 +166,11 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
+<<<<<<< HEAD
 #line 169 "yacc_sql.hpp"
+=======
+#line 168 "yacc_sql.hpp"
+>>>>>>> expression
 
 };
 typedef union YYSTYPE YYSTYPE;

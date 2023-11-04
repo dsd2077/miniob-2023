@@ -92,8 +92,23 @@ public:
   virtual std::string name() const { return name_; }
   virtual void set_name(std::string name) { name_ = name; }
 
+  void set_with_brace() { with_brace_ = true; }
+  bool with_brace() const { return with_brace_; }
+
+  virtual void set_negtive() { negtive_ = true; }
+  bool is_negtive() const { return negtive_; }
+  void try_get_negtive_value(Value &value) const {
+    if (negtive_) {
+      value.set_negtive();
+    }
+  }
+
+protected:
+  bool negtive_ = false;
+
 private:
   std::string  name_;     
+  bool with_brace_ = false;
 };
 
 /**
@@ -173,8 +188,7 @@ public:
 
   const Value &get_value() const { return value_; }
 
-  static RC create_expression(const Expression *expr, const std::unordered_map<std::string, Table *> &table_map,
-      const std::vector<Table *> &tables, Expression *&res_expr, CompOp comp = NO_OP, Db *db = nullptr);
+  virtual void set_negtive() override { value_.set_negtive(); }
 
 private:
   Value value_;
@@ -348,6 +362,18 @@ public:
 
   Type arithmetic_type() const { return arithmetic_type_; }
 
+  const char get_op_char() const
+  {
+    switch (arithmetic_type_) {
+      case Type::ADD: return '+'; break;
+      case Type::SUB: return '-'; break;
+      case Type::MUL: return '*'; break;
+      case Type::DIV: return '/'; break;
+      default: LOG_ERROR("unsupported op"); break;
+    }
+    return '?';
+  }
+
   std::unique_ptr<Expression> &left() { return left_; }
   std::unique_ptr<Expression> &right() { return right_; }
 
@@ -430,7 +456,12 @@ public:
 
   RC get_value(const Tuple &tuple, Value &cell) const override
   {
-    return RC::UNIMPLENMENT;
+    if (values_.size() == 1) {
+      cell = values_[0];
+      return RC::SUCCESS;
+    }
+    LOG_ERROR("cann't get value from ListExpression!");
+    return RC::INVALID_ARGUMENT;
   }
 
   ExprType type() const override

@@ -12,6 +12,7 @@ See the Mulan PSL v2 for more details. */
 // Created by WangYunlai on 2023/06/28.
 //
 
+#include <limits>
 #include <sstream>
 #include "sql/parser/value.h"
 #include "storage/field/field.h"
@@ -402,4 +403,29 @@ const Value Value::div(const Value &left, const Value &right)
     result_cell.set_float(result);
   }
   return result_cell;
+}
+
+void Value::set_negtive() {
+  switch (attr_type_) {
+    case INTS: {
+      set_int(-get_int());
+      break;
+    }
+    case FLOATS: {
+      set_float(-get_float());
+      break;
+    }
+    case BOOLEANS: {
+      set_boolean(-get_boolean());
+      break;
+    }
+    case CHARS: {
+      float temp = common::stringToNumber(str_value_);
+      set_float(temp);
+      set_type(FLOATS);
+    }
+    default: {
+      LOG_ERROR("unsupported negtive value type! type = %d", attr_type_);
+    }
+  }
 }

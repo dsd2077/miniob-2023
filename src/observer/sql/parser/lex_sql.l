@@ -74,12 +74,12 @@ QUOTE            [\'\"]
 /* yylval 就可以认为是 yacc 中 %union 定义的结构体(union 结构) */
 %%
 
-{WHITE_SAPCE}                                        // ignore whitespace
-\n                                                   ;
-
-[\-]?{DIGIT}+                                  yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);            // 这里的三个数据类型对应的是Value.h中定义的数据类型
-[\-]?{DIGIT}+{DOT}{DIGIT}+                     yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);    // 
-{QUOTE}[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}{QUOTE}     yylval->string=strdup(yytext); RETURN_TOKEN(DATE);            // T1修改点
+{WHITE_SAPCE}                                         // ignore whitespace
+\n                                                    ;
+"-"                                                   RETURN_TOKEN(SUB);
+{DIGIT}+                                              yylval->number=atoi(yytext); RETURN_TOKEN(NUMBER);            // 这里的三个数据类型对应的是Value.h中定义的数据类型
+{DIGIT}+{DOT}{DIGIT}+                                 yylval->floats=(float)(atof(yytext)); RETURN_TOKEN(FLOAT);    // 
+{QUOTE}[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}{QUOTE}        yylval->string=strdup(yytext); RETURN_TOKEN(DATE);            // T1修改点
 
 ";"                                     RETURN_TOKEN(SEMICOLON);
 {DOT}                                   RETURN_TOKEN(DOT);
@@ -100,6 +100,7 @@ CALC                                    RETURN_TOKEN(CALC);
 FROM                                    RETURN_TOKEN(FROM);
 WHERE                                   RETURN_TOKEN(WHERE);
 AND                                     RETURN_TOKEN(AND);
+OR                                      RETURN_TOKEN(OR); 
 INSERT                                  RETURN_TOKEN(INSERT);
 INTO                                    RETURN_TOKEN(INTO);
 VALUES                                  RETURN_TOKEN(VALUES);
@@ -151,9 +152,9 @@ EXPLAIN                                 RETURN_TOKEN(EXPLAIN);
 ">"                                     RETURN_TOKEN(GT);
 
 "+" |
-"-" |
 "*" |
 "/"                                     { return yytext[0]; }
+
 \"[^"]*\"                               yylval->string = strdup(yytext); RETURN_TOKEN(SSS);
 '[^']*\'                                yylval->string = strdup(yytext); RETURN_TOKEN(SSS);
 

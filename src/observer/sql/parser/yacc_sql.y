@@ -101,6 +101,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         GE
         NE
         INNER
+        SUB
         JOIN
         ORDER
         BY 
@@ -156,7 +157,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   AggrFuncType                      aggr_func_type;
 }
 
-// TODO:这四个TOKEN的含义？
 %token <number> NUMBER  
 %token <floats> FLOAT
 %token <string> ID      
@@ -219,13 +219,13 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <order_direction>     order_direction
 %type <expression>          where
 %type <expression>          unary_expr
+%type <expression>          add_expr
+%type <expression>          mul_expr
 %type <expression>          condition
 %type <expression>          condition_list
 %type <expression>          sub_select_expr
 %type <expression>          arithmetic_expr
 %type <expression>          sub_select_list
-%type <expression>          add_expr
-%type <expression>          mul_expr
 %type <expression>          aggr_func_expr
 %type <aggr_func_type>      aggr_func_type
 
@@ -233,6 +233,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 
 %left '+' '-'
 %left '*' '/'
+%right SUB // 给一元减号定义高优先级
 %nonassoc UMINUS
 %%
 
@@ -487,7 +488,6 @@ insert_stmt:        /*insert   语句的语法解析树*/
     }
     ;
 
-// TODO:找到了，value的值在这里修改
 value_list:
     /* empty */
     {
@@ -513,6 +513,14 @@ value:
       $$ = new Value((float)$1);
       @$ = @1;
     }
+    //| SUB NUMBER %prec SUB {
+    //  $$ = new Value(-(int)$2);
+    //  @$ = @1;
+    //}
+    //| SUB FLOAT %prec SUB {
+    //  $$ = new Value(-(float)$2);
+    //  @$ = @1;
+    //}
     | DATE {    // T1修改点
       char *tmp = common::substr($1,1,strlen($1)-2);
       $$ = new Value(tmp, 0, true);    // 构建Date类型的Value
@@ -615,8 +623,6 @@ select_stmt:        /*  select 语句的语法解析树*/
 
     }
     ;
-
-
 
 calc_stmt:
     CALC expression_list
@@ -932,6 +938,7 @@ condition_list:   // 返回ConjunctionExpr*
     }
     | condition OR condition_list {        
       ConjunctionExpr *base = static_cast<ConjunctionExpr *>($3);
+      assert(base != nullptr);
       base->add_condition($1);
       base->set_conjunction_type(ConjunctionExpr::Type::OR);
       $$ = base;
@@ -965,11 +972,13 @@ condition:      // 返回ComparisonExpr
 
 // 第二优先级表达式：第一优先级表达式/加法、减法
 add_expr:
-    mul_expr { $$ = $1; }    
+    mul_expr {
+      $$ = $1; 
+    }    
     | add_expr '+' mul_expr {
       $$ = new ArithmeticExpr(ArithmeticExpr::Type::ADD, $1, $3);
     }
-    | add_expr '-' mul_expr {
+    | add_expr SUB mul_expr {
       $$ = new ArithmeticExpr(ArithmeticExpr::Type::SUB, $1, $3);
     }
     ;
@@ -989,7 +998,7 @@ mul_expr:
 
 // 单目表达式
 unary_expr:
-    value {
+    value {     
       $$ = new ValueExpr(*$1);
     }
     | ID {
@@ -997,6 +1006,10 @@ unary_expr:
     }
     | ID DOT ID {
       $$ = new FieldExpr($3, $1);
+    }
+    | LBRACE add_expr RBRACE {
+      $$ = $2;
+      $$->set_with_brace();
     }
     // | func_expr {
     //   $$ = $1;
@@ -1010,8 +1023,9 @@ unary_expr:
     | sub_select_list{
       $$ = $1;
     }
-    | LBRACE add_expr RBRACE {
+    | SUB unary_expr {
       $$ = $2;
+      $$->set_negtive();
     }
     ;
 
@@ -1068,6 +1082,7 @@ sub_select_list:
       }
 
       $$ = new ListExpression(*temp);
+      $$->set_with_brace();
     }
     ;
 

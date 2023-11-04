@@ -403,3 +403,19 @@ const Value Value::div(const Value &left, const Value &right)
   }
   return result_cell;
 }
+
+void Value::set_negtive() {
+  switch (attr_type_) {
+    case INTS: {
+      set_int(-get_int());
+      break;
+    }
+    case FLOATS: {
+      set_float(-get_float());
+      break;
+    }
+    default: {
+      LOG_ERROR("unsupported negtive value type! type = %d", attr_type_);
+    }
+  }
+}

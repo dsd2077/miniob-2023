@@ -537,7 +537,13 @@ RC ArithmeticExpr::calc_value(const Value &left_value, const Value &right_value,
 {
   RC rc = RC::SUCCESS;
 
-  const AttrType target_type = value_type();
+  AttrType target_type;
+  if (left_value.attr_type() == AttrType::INTS && right_value.attr_type() == AttrType::INTS &&
+      arithmetic_type_ != Type::DIV) {
+    target_type = AttrType::INTS;
+  } else {
+    target_type = AttrType::FLOATS;
+  }
 
   switch (arithmetic_type_) {
     case Type::ADD: {

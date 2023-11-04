@@ -144,6 +144,7 @@ public:
   std::string get_string() const;
   bool get_boolean() const;
   bool check_date(int y, int m, int d); 
+  void set_negtive();
 
 private:
   AttrType attr_type_ = UNDEFINED;

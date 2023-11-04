@@ -101,6 +101,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         GE
         NE
         INNER
+        SUB
         JOIN
         ORDER
         BY 
@@ -507,8 +508,16 @@ value:
       $$ = new Value((int)$1);
       @$ = @1;
     }
+    | SUB NUMBER {
+      $$ = new Value(-(int)$2);
+      @$ = @1;
+    }
     |FLOAT {
       $$ = new Value((float)$1);
+      @$ = @1;
+    }
+    |SUB FLOAT {
+      $$ = new Value(-(float)$2);
       @$ = @1;
     }
     | DATE {    // T1修改点
@@ -582,8 +591,6 @@ select_stmt:        /*  select 语句的语法解析树*/
 
     }
     ;
-
-
 
 calc_stmt:
     CALC expression_list
@@ -899,6 +906,7 @@ condition_list:   // 返回ConjunctionExpr*
     }
     | condition OR condition_list {        
       ConjunctionExpr *base = static_cast<ConjunctionExpr *>($3);
+      assert(base != nullptr);
       base->add_condition($1);
       base->set_conjunction_type(ConjunctionExpr::Type::OR);
       $$ = base;
@@ -932,11 +940,13 @@ condition:      // 返回ComparisonExpr
 
 // 第二优先级表达式：第一优先级表达式/加法、减法
 add_expr:
-    mul_expr { $$ = $1; }    
+    mul_expr {
+      $$ = $1; 
+    }    
     | add_expr '+' mul_expr {
       $$ = new ArithmeticExpr(ArithmeticExpr::Type::ADD, $1, $3);
     }
-    | add_expr '-' mul_expr {
+    | add_expr SUB mul_expr {
       $$ = new ArithmeticExpr(ArithmeticExpr::Type::SUB, $1, $3);
     }
     ;
@@ -946,6 +956,9 @@ mul_expr:
     unary_expr {
       $$ = $1;
     }
+    // | SUB unary_expr {        // TODO：unary_expr已经可以表示负值，这里是不是多余的？
+    //  $$ = $2;
+    // }
     | mul_expr '*' unary_expr {
       $$ = new ArithmeticExpr(ArithmeticExpr::Type::MUL, $1, $3);
     }
@@ -956,7 +969,7 @@ mul_expr:
 
 // 单目表达式
 unary_expr:
-    value {
+    value {     
       $$ = new ValueExpr(*$1);
     }
     | ID {

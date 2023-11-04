@@ -1075,10 +1075,34 @@ aggr_func_type:
 
 
 sub_select_expr:
-  LBRACE select_stmt RBRACE 
+  LBRACE SELECT select_attr FROM from inner_join_list where order_by RBRACE 
   {
-    // SubQueryExpression
-    $$ = new SubQueryExpression($2);
+    ParsedSqlNode *temp= new ParsedSqlNode(SCF_SELECT);
+    if ($3 != nullptr) {
+      temp->selection.attributes.swap(*$3);
+      delete $3;
+    }
+    if ($5 != nullptr) {
+      temp->selection.relations.swap(*$5);
+      delete $5;
+    }
+    std::reverse(temp->selection.relations.begin(), temp->selection.relations.end());   // 为什么这里要反转？因为select_attr的写法是反着的。
+    if ($6 != nullptr) {
+      temp->selection.inner_join_clauses.swap(*$6);
+      delete $6;
+    }
+    std::reverse(temp->selection.inner_join_clauses.begin(), temp->selection.inner_join_clauses.end());   
+
+    if ($7 != nullptr) {
+      temp->selection.conditions = $7;
+    }
+
+    if ($8 != nullptr) {
+      temp->selection.order_by_nodes.swap(*$8);
+      delete $8;
+    }
+    SubQueryExpression *res = new SubQueryExpression(temp);
+    $$ = res;
   }
   ;
 

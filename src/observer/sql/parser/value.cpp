@@ -213,6 +213,9 @@ std::string Value::to_string() const
     case CHARS: {
       os << str_value_;
     } break;
+    case NULLS: {
+      os << "NULL";
+    } break;
     default: {
       LOG_WARN("unsupported attr type: %d", attr_type_);
     } break;

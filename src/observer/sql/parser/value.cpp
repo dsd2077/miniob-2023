@@ -12,6 +12,7 @@ See the Mulan PSL v2 for more details. */
 // Created by WangYunlai on 2023/06/28.
 //
 
+#include <limits>
 #include <sstream>
 #include "sql/parser/value.h"
 #include "storage/field/field.h"

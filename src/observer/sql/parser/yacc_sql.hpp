@@ -166,11 +166,7 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
-<<<<<<< HEAD
-#line 169 "yacc_sql.hpp"
-=======
-#line 168 "yacc_sql.hpp"
->>>>>>> expression
+#line 170 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

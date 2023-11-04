@@ -52,6 +52,7 @@ enum class PhysicalOperatorType
   UPDATE,
   ORDER_BY,
   GROUP_BY,
+  EMPTY_TABLE_GET,
 };
 
 /**

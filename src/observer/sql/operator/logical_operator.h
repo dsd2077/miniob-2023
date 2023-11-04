@@ -44,7 +44,8 @@ enum class LogicalOperatorType
   EXPLAIN,    ///< 查看执行计划
   NONE,       ///< T10加入：用于第一层的记录父算子类型
   ORDER_BY,   
-  GROUP_BY
+  GROUP_BY, 
+  EMPTY_TABLE_GET,    // 从空表中获取数据，用于计算表达式
 };
 
 /**

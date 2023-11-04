@@ -58,6 +58,4 @@ public:
 private:
   std::vector<std::unique_ptr<Expression>> expressions_;      //
   ProjectTuple tuple_;
-  bool is_first_ = true;      // 执行函数表达式
-  RowTuple temp_tuple_;       //用于执行函数表达式的临时对象
 };

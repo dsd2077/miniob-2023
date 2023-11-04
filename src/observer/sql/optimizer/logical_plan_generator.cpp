@@ -29,6 +29,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/order_by_logical_operator.h"
 #include "sql/operator/groupby_logical_operator.h"
 #include "sql/operator/groupby_physical_operator.h"
+#include "sql/operator/empty_table_get_logical_oper.h"
+#include "sql/operator/empty_table_get_physical_oper.h"
 
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
@@ -42,6 +44,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/order_by_stmt.h"
 #include <cstddef>
 #include <memory>
+#include <utility>
 
 using namespace std;
 
@@ -96,21 +99,23 @@ RC LogicalPlanGenerator::create_plan(
   unique_ptr<LogicalOperator> table_oper(nullptr);  // table_oper可能是TableGetLogicalOperator（单表）或者JoinLogicalOperator(多表)
 
   const std::vector<Table *> &tables = select_stmt->tables();
-  for (Table *table : tables) {
-    unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, true/*readonly*/));
-    if (table_oper == nullptr) {
-      table_oper = std::move(table_get_oper);   
-    } else {
-      JoinLogicalOperator *join_oper = new JoinLogicalOperator;
-      join_oper->add_child(std::move(table_oper));    
-      join_oper->add_child(std::move(table_get_oper));
-      table_oper = unique_ptr<LogicalOperator>(join_oper);
+  if (tables.size()) {
+    for (Table *table : tables) {
+      unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, true /*readonly*/));
+      if (table_oper == nullptr) {
+        table_oper = std::move(table_get_oper);
+      } else {
+        JoinLogicalOperator *join_oper = new JoinLogicalOperator;
+        join_oper->add_child(std::move(table_oper));
+        join_oper->add_child(std::move(table_get_oper));
+        table_oper = unique_ptr<LogicalOperator>(join_oper);
+      }
     }
+  } else {
+    unique_ptr<LogicalOperator> emp_table_oper(new EmptyTableGetLogicalOperator());
+    table_oper = std::move(emp_table_oper);
   }
-  std::unique_ptr<LogicalOperator> top_oper;
-  if (table_oper != nullptr) {
-    top_oper = std::move(table_oper);
-  }
+  std::unique_ptr<LogicalOperator> top_oper = std::move(table_oper);
 
   RC rc = RC::SUCCESS;
   // 构建inner_join_oper
@@ -232,9 +237,7 @@ RC LogicalPlanGenerator::create_plan(
   for (auto it = projects.begin(); it != projects.end(); it++) {    // select_attr 中的表达式转移到logical_oper中
     project_oper->add_project(*it);
   }
-  if (top_oper != nullptr) {
-    project_oper->add_child(std::move(top_oper));
-  }
+  project_oper->add_child(std::move(top_oper));
 
   logical_operator.swap(project_oper);
 

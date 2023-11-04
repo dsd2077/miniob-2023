@@ -35,14 +35,8 @@ RC ProjectPhysicalOperator::open(Trx *trx)
 
 RC ProjectPhysicalOperator::next()
 {
-  // 没有下层算子，有可能有函数表达式
   if (children_.empty()) {
-    if (is_first_) {
-      is_first_ = false;
-      return RC::SUCCESS;
-    } else {
-      return RC::RECORD_EOF;
-    }
+    return RC::RECORD_EOF;
   }
   return children_[0]->next();
 }
@@ -56,13 +50,8 @@ RC ProjectPhysicalOperator::close()
 }
 Tuple *ProjectPhysicalOperator::current_tuple()
 {
-  if (children_.size()) {
-    tuple_.set_tuple(children_[0]->current_tuple());
-    return &tuple_;
-  } else {
-    tuple_.set_tuple(&temp_tuple_);
-    return &tuple_;
-  }
+  tuple_.set_tuple(children_[0]->current_tuple());
+  return &tuple_;
 }
 
 void ProjectPhysicalOperator::add_projection(std::unique_ptr<Expression> &expr, bool is_single_table)

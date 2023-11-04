@@ -41,6 +41,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse_defs.h"
 #include "sql/operator/groupby_logical_operator.h"
 #include "sql/operator/groupby_physical_operator.h"
+#include "sql/operator/empty_table_get_logical_oper.h"
+#include "sql/operator/empty_table_get_physical_oper.h"
 
 using namespace std;
 
@@ -84,12 +86,23 @@ RC PhysicalPlanGenerator::create(LogicalOperator &logical_operator, unique_ptr<P
     case LogicalOperatorType::GROUP_BY: {
       return create_plan(static_cast<GroupByLogicalOperator &>(logical_operator), oper, parent_oper_type);
     } break;
+    case LogicalOperatorType::EMPTY_TABLE_GET: {
+      return create_plan(static_cast<EmptyTableGetLogicalOperator &>(logical_operator), oper, parent_oper_type);
+    }break;
 
     default: {
       return RC::INVALID_ARGUMENT;
     }
   }
   return rc;
+}
+
+RC PhysicalPlanGenerator::create_plan(EmptyTableGetLogicalOperator &logical_oper,
+    std::unique_ptr<PhysicalOperator> &oper, LogicalOperatorType parent_oper_type)
+{
+  unique_ptr<EmptyTableGetPhysicalOperator> emp_table_get_oper(new EmptyTableGetPhysicalOperator());
+  oper = std::move(emp_table_get_oper);
+  return RC::SUCCESS;
 }
 
 RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, unique_ptr<PhysicalOperator> &oper,

@@ -849,8 +849,9 @@ RC FuncExpression::get_func_data_format_value(const Tuple &tuple, Value &final_c
   if (format_expr_cell.attr_type() != CHARS) {
     return RC::INTERNAL;
   }
-  int cell_date = *(int *)(date_expr_cell.data());
-  char *cell_format_chars = (char *)(format_expr_cell.data());
+  int cell_date = date_expr_cell.get_int();
+  std::string cell_format_string = format_expr_cell.get_string();
+  const char *cell_format_chars = cell_format_string.c_str();
   std::string result_date_str;
   int year = cell_date / 10000;
   int month = (cell_date / 100) % 100;
@@ -991,7 +992,7 @@ RC FuncExpression::get_func_data_format_value(const Tuple &tuple, Value &final_c
     }
   }
   // std::cout << result_date_str << std::endl;
-  final_cell.set_date(strdup(result_date_str.c_str()));
+  final_cell.set_string(result_date_str.c_str(), result_date_str.size());
   return RC::SUCCESS;
 }
 

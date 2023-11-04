@@ -594,14 +594,14 @@ set_attr_list:
     ;
 
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr {
+    SELECT select_attr SEMICOLON {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
         $$->selection.attributes.swap(*$2);
         delete $2;
       }
     }
-    | SELECT select_attr FROM from inner_join_list where order_by
+    | SELECT select_attr FROM from inner_join_list where order_by SEMICOLON
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {

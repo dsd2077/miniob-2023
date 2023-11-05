@@ -381,7 +381,7 @@ const Value Value::add(const Value &left, const Value &right)
     result_cell.set_int(result);
     result_cell.set_type(INTS);
   } else if (left.attr_type_ == FLOATS && right.attr_type_ == FLOATS){
-    int result = left.get_float() + right.get_float();
+    float result = left.get_float() + right.get_float();
     result_cell.set_float(result);
     result_cell.set_type(FLOATS);
   }

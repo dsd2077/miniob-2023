@@ -141,7 +141,6 @@ RC LogicalPlanGenerator::create_plan(
       create_plan_for_subquery(expr);
     }
 
-    auto ty = select_stmt->filter_stmt()->predicate()->type();
     rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
     predicate_oper->add_child(std::move(top_oper));      
     top_oper = std::move(predicate_oper);
@@ -153,13 +152,16 @@ RC LogicalPlanGenerator::create_plan(
 
   // 2 process groupby clause and aggrfunc fileds
   // 2.1 gen sort oper for groupby
-  // OrderByLogicalOperator *sort_oper_for_groupby = nullptr;
-  // if (nullptr != select_stmt->orderby_stmt_for_groupby()) {
-  //   sort_oper_for_groupby = new SortOperator(select_stmt->orderby_stmt_for_groupby());
-  //   sort_oper_for_groupby->add_child(top_op);
-  //   top_op = sort_oper_for_groupby;
-  //   delete_opers.emplace_back(sort_oper_for_groupby);
-  // }
+  unique_ptr<LogicalOperator> sort_oper_for_groupby = nullptr;
+  if (nullptr != select_stmt->orderby_stmt_for_groupby()) {
+    rc = create_plan(select_stmt->orderby_stmt_for_groupby(), sort_oper_for_groupby);
+    sort_oper_for_groupby->add_child(std::move(top_oper));      
+    top_oper = std::move(sort_oper_for_groupby);
+  }
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create sort_oper_for_groupby logical plan. rc=%s", strrc(rc));
+    return rc;
+  }
 
   // 2.2 get aggrfunc_exprs from projects
   std::vector<AggrFuncExpression *> aggr_exprs;
@@ -174,16 +176,18 @@ RC LogicalPlanGenerator::create_plan(
   }
 
   // 2.4 get aggrfunc_exprs field_exprs from havings
-  // HavingStmt *having_stmt = select_stmt->having_stmt();
-  // if (nullptr != having_stmt) {
-  //   // TODO(wbj) unique
-  //   for (auto hf : having_stmt->filter_units()) {
-  //     AggrFuncExpression::get_aggrfuncexprs(hf->left(), aggr_exprs);
-  //     AggrFuncExpression::get_aggrfuncexprs(hf->right(), aggr_exprs);
-  //     FieldExpr::get_fieldexprs_without_aggrfunc(hf->left(), field_exprs);
-  //     FieldExpr::get_fieldexprs_without_aggrfunc(hf->right(), field_exprs);
-  //   }
-  // }
+  FilterStmt *having_stmt = select_stmt->having_stmt();
+  if (nullptr != having_stmt) {
+    ConjunctionExpr * temp = dynamic_cast<ConjunctionExpr*>(having_stmt->predicate().get());
+    assert(temp != nullptr);
+    for (auto &expr : temp->children()) {
+      ComparisonExpr *temp = dynamic_cast<ComparisonExpr *>(expr.get());
+      AggrFuncExpression::get_aggrfuncexprs(temp->left().get(), aggr_exprs);
+      AggrFuncExpression::get_aggrfuncexprs(temp->right().get(), aggr_exprs);
+      FieldExpr::get_fieldexprs_without_aggrfunc(temp->left().get(), field_exprs);
+      FieldExpr::get_fieldexprs_without_aggrfunc(temp->right().get(), field_exprs);
+    }
+  }
 
   GroupByStmt *groupby_stmt = select_stmt->groupby_stmt();
   // 2.5 do check 
@@ -220,6 +224,15 @@ RC LogicalPlanGenerator::create_plan(
     // delete_opers.emplace_back(groupby_oper);
   }
 
+  // 3 process having clause
+  unique_ptr<LogicalOperator> having_oper;     
+  if (nullptr != having_stmt) {
+    rc = create_plan(having_stmt, having_oper);
+    having_oper->add_child(std::move(top_oper));      
+    top_oper = std::move(having_oper);
+  }
+
+  // order by 子句 
   unique_ptr<LogicalOperator> order_by_oper;
   if (select_stmt->orderby_stmt() != nullptr) {
     rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
@@ -227,7 +240,7 @@ RC LogicalPlanGenerator::create_plan(
     top_oper = std::move(order_by_oper);
   }
   if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
+    LOG_WARN("failed to create order_by_oper logical plan. rc=%s", strrc(rc));
     return rc;
   }
 

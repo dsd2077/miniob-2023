@@ -131,6 +131,8 @@ COUNT                                   RETURN_TOKEN(AGGR_COUNT);
 LENGTH                                  RETURN_TOKEN(LENGTH);
 ROUND                                   RETURN_TOKEN(ROUND);
 DATE_FORMAT                             RETURN_TOKEN(DATE_FORMAT);
+GROUP                                   RETURN_TOKEN(GROUP);
+HAVING                                  RETURN_TOKEN(HAVING);
 
 
 INT                                     RETURN_TOKEN(INT_T);    

@@ -15,9 +15,7 @@ public:
   GroupByLogicalOperator(const std::vector<GroupByUnit *> groupby_units, std::vector<AggrFuncExpression *> &agg_exprs,
       std::vector<FieldExpr *> &field_exprs)
       : groupby_units_(groupby_units), agg_exprs_(agg_exprs), field_exprs_(field_exprs)
-  {
-    int a = 1;
-  }
+  {}
 
   virtual ~GroupByLogicalOperator() = default;
 

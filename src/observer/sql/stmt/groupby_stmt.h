@@ -57,10 +57,10 @@ public:
 
 public:
   static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
-      const std::vector<OrderByNode> & orderbys, GroupByStmt *&stmt);
+      const std::vector<RelAttrSqlNode> & groupbys, GroupByStmt *&stmt);
 
   static RC create_groupby_unit(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
-      const RelAttr &groupby, GroupByUnit *&groupby_unit);
+      const RelAttrSqlNode &groupby, GroupByUnit *&groupby_unit);
 
 private:
   std::vector<GroupByUnit *> groupby_units_;

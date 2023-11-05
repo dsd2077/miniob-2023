@@ -102,6 +102,12 @@ public:
    */
   virtual RC cell_at(int index, Value &cell) const = 0;
 
+  // push back records of the tuple to arg:record
+  virtual void get_record(CompoundRecord &record) const = 0;
+  // this func will set all records
+  virtual void set_record(CompoundRecord &record) = 0;
+  
+
   /**
    * @brief 根据cell的描述，获取cell的值
    * 
@@ -169,9 +175,17 @@ public:
     return new RowTuple(*this);
   }
 
-  void set_record(Record *record)
+  void set_record(Record *record) 
   {
     this->record_ = record;
+  }
+
+  void set_record(CompoundRecord &record) override
+  {
+    assert(record.size() >= 1);
+    Record *temp_record = record.front();
+    set_record(record.front());
+    record.erase(record.begin());   // TODO:这里存在内存泄漏
   }
 
   void set_schema(const Table *table, const std::vector<FieldMeta> *fields)
@@ -219,6 +233,7 @@ public:
     }
     return RC::NOTFOUND;
   }
+  void get_record(CompoundRecord &record) const override { record.emplace_back(record_); }
 
 #if 0
   RC cell_spec_at(int index, const TupleCellSpec *&spec) const override
@@ -244,7 +259,7 @@ public:
 
 
 private:
-  Record *record_ = nullptr;
+    Record *record_ = nullptr;
   const Table *table_ = nullptr;
   std::vector<FieldExpr *> speces_;
 };
@@ -272,10 +287,9 @@ public:
     return new ProjectTuple(*this);
   }
 
-  void set_tuple(Tuple *tuple)
-  {
-    this->tuple_ = tuple;
-  }
+  void set_tuple(Tuple *tuple) { this->tuple_ = tuple; }
+
+  void set_record(CompoundRecord &record) override { tuple_->set_record(record); }
 
   void add_project(Expression *project) { speces_.push_back(project); }
 
@@ -303,6 +317,8 @@ public:
     expr = speces_[index];
     return;
   }
+
+  void get_record(CompoundRecord &record) const override { tuple_->get_record(record); }
 
 private:
   std::vector<Expression *> speces_;       
@@ -350,6 +366,8 @@ public:
     return RC::NOTFOUND;
   }
 
+  void get_record(CompoundRecord &record) const override {}
+  void set_record(CompoundRecord &record) override {}
 
 private:
   const std::vector<std::unique_ptr<Expression>> &expressions_;
@@ -377,6 +395,9 @@ public:
   {
     return static_cast<int>(cells_.size());
   }
+
+  void get_record(CompoundRecord &record) const override {}
+  void set_record(CompoundRecord &record) override {}
 
   virtual RC cell_at(int index, Value &cell) const override
   {
@@ -459,6 +480,18 @@ public:
     }
 
     return right_->find_cell(spec, value);
+  }
+
+  void get_record(CompoundRecord &record) const override
+  {
+    left_->get_record(record);
+    right_->get_record(record);
+  }
+
+  void set_record(CompoundRecord &record) override
+  {
+    left_->set_record(record);
+    right_->set_record(record);
   }
 
 private:
@@ -577,6 +610,9 @@ public:
     field_results_.resize(field_exprs.size());
     field_exprs_ = field_exprs;
   }
+
+  void get_record(CompoundRecord &record) const override { tuple_->get_record(record); }
+  void set_record(CompoundRecord &record) override { tuple_->set_record(record); }
 
 private:
   int count_ = 0;

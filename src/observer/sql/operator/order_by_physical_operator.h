@@ -2,8 +2,8 @@
  * @brief:      A brief description of the file's purpose and main functionalities.
  * @details:    A more detailed description, if necessary.
  * 
- * @author:     dengshudong 
- * @create_time: 2023年10月24日20:16:40
+ * @author:     2023年11月05日10:34:33
+ * @create_time: [TIMESTAMP]
  * @version:    1.0
  **/
 
@@ -34,7 +34,7 @@ private:
 
 private:
   std::vector<OrderByUnit* > &order_by_fields_;
-  std::vector<Tuple *>     data_;
-  int                      current_tuple_index_;
-  Trx *                     trx_;
+  std::vector<CompoundRecord> st_;  // sort table
+  std::vector<int> ordered_idx_;
+  std::vector<int>::iterator it_;
 };

@@ -28,7 +28,7 @@ RC OrderByStmt::create(Db *db, Table *default_table, std::unordered_map<std::str
 
   OrderByStmt *tmp_stmt = new OrderByStmt();
   for (int i = 0; i < orderbys.size(); i++) {
-    OrderByUnit *orderby_unit = nullptr;
+    OrderByUnit *orderby_unit = nullptr;      // orderby_unit指向的是一块堆上的内存
     rc = create_orderby_unit(db, default_table, tables, orderbys[i], orderby_unit);
     if (rc != RC::SUCCESS) {
       delete tmp_stmt;

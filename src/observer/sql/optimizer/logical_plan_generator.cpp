@@ -151,17 +151,6 @@ RC LogicalPlanGenerator::create_plan(
     return rc;
   }
 
-  unique_ptr<LogicalOperator> order_by_oper;
-  if (select_stmt->orderby_stmt() != nullptr) {
-    rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
-    order_by_oper->add_child(std::move(top_oper));      
-    top_oper = std::move(order_by_oper);
-  }
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
-    return rc;
-  }
-
   // 2 process groupby clause and aggrfunc fileds
   // 2.1 gen sort oper for groupby
   // OrderByLogicalOperator *sort_oper_for_groupby = nullptr;
@@ -231,6 +220,16 @@ RC LogicalPlanGenerator::create_plan(
     // delete_opers.emplace_back(groupby_oper);
   }
 
+  unique_ptr<LogicalOperator> order_by_oper;
+  if (select_stmt->orderby_stmt() != nullptr) {
+    rc = create_plan(select_stmt->orderby_stmt(), order_by_oper);
+    order_by_oper->add_child(std::move(top_oper));      
+    top_oper = std::move(order_by_oper);
+  }
+  if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
+    return rc;
+  }
 
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator());
   auto &projects = select_stmt->projects();

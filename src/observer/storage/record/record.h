@@ -120,7 +120,6 @@ public:
     if (this == &other) {
       return *this;
     }
-
     this->~Record();
     new (this) Record(other);
     return *this;

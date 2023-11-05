@@ -27,5 +27,5 @@ public:
   }
 
 private:
-  std::vector<OrderByUnit*> &order_by_fields_;
+  std::vector<OrderByUnit*> &order_by_fields_;    //OrderByUnit的指针全部放在select_stmt->order_by_stmt->orderby_units中
 };

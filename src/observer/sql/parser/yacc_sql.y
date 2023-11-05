@@ -630,7 +630,7 @@ select_stmt:        /*  select 语句的语法解析树*/
         $$->selection.order_by_nodes.swap(*$7);
         delete $7;
       }
-      // std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
+      std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
 
     }
     ;
@@ -920,10 +920,6 @@ order_by:
         $$ = $3;
     }
     ;
-
-/**
- *dengshudong添加的语法规则end
-*/
 
 where:     // 返回Expression *
   /* empty */ 

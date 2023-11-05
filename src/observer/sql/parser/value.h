@@ -129,6 +129,21 @@ public:
     }
     return a.compare(b) >= 0 ? a : b;
   }
+  bool operator!=(const Value &other) const
+  {
+    return 0 != compare(other);
+  }
+
+  bool operator<(const Value &other) const
+  {
+    return 0 > compare(other);
+  }
+
+  bool operator>(const Value &other) const
+  {
+    return 0 < compare(other);
+  }
+
   static const Value add(const Value &left, const Value &right);
   static const Value sub(const Value &left, const Value &right);
   static const Value mul(const Value &left, const Value &right);

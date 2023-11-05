@@ -80,7 +80,7 @@ public:
   //     const GroupBy &groupby, OrderByUnit *&orderby_unit);
 
 private:
-  std::vector<OrderByUnit *> orderby_units_;
+  std::vector<OrderByUnit *> orderby_units_;      // OrderByUnit会在哪里消亡？
 };
 
 

@@ -133,6 +133,7 @@ ROUND                                   RETURN_TOKEN(ROUND);
 DATE_FORMAT                             RETURN_TOKEN(DATE_FORMAT);
 GROUP                                   RETURN_TOKEN(GROUP);
 HAVING                                  RETURN_TOKEN(HAVING);
+TEXT                                    RETURN_TOKEN(TEXT);
 
 
 INT                                     RETURN_TOKEN(INT_T);    

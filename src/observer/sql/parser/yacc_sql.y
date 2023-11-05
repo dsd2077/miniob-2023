@@ -125,6 +125,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         DATE_FORMAT
         GROUP
         HAVING
+        TEXT
 
 
 
@@ -434,6 +435,14 @@ attr_def:
       $$->length = $4;
       free($1);
     }
+    | ID TEXT
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = CHARS;
+      $$->name = $1;
+      $$->length = 8184;
+      free($1);
+		}
     |ID type LBRACE number RBRACE NOT NULL_VALUE
 		{
       $$ = new AttrInfoSqlNode;

@@ -124,12 +124,13 @@ extern int yydebug;
     DATE_FORMAT = 325,             /* DATE_FORMAT  */
     GROUP = 326,                   /* GROUP  */
     HAVING = 327,                  /* HAVING  */
-    NUMBER = 328,                  /* NUMBER  */
-    FLOAT = 329,                   /* FLOAT  */
-    ID = 330,                      /* ID  */
-    DATE = 331,                    /* DATE  */
-    SSS = 332,                     /* SSS  */
-    UMINUS = 333                   /* UMINUS  */
+    TEXT = 328,                    /* TEXT  */
+    NUMBER = 329,                  /* NUMBER  */
+    FLOAT = 330,                   /* FLOAT  */
+    ID = 331,                      /* ID  */
+    DATE = 332,                    /* DATE  */
+    SSS = 333,                     /* SSS  */
+    UMINUS = 334                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -138,7 +139,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 133 "yacc_sql.y"
+#line 134 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   CompOp                            comp;
@@ -171,7 +172,7 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
-#line 175 "yacc_sql.hpp"
+#line 176 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

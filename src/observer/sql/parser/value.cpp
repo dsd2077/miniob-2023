@@ -72,20 +72,17 @@ void Value::set_data(char *data, int length)
     case CHARS: {
       set_string(data, length);
     } break;
-    case DATES: {
-      num_value_.date_value_ = *(int *)data;
-      length_ = length;
-    } break;
+    case DATES: 
     case INTS: {
-      num_value_.int_value_ = *(int *)data;
+      int_value_ = *(int *)data;
       length_ = length;
     } break;
     case FLOATS: {
-      num_value_.float_value_ = *(float *)data;
+      float_value_ = *(float *)data;
       length_ = length;
     } break;
     case BOOLEANS: {
-      num_value_.bool_value_ = *(int *)data != 0;
+      bool_value_ = *(int *)data != 0;
       length_ = length;
     } break;
     default: {
@@ -96,26 +93,26 @@ void Value::set_data(char *data, int length)
 void Value::set_int(int val)
 {
   attr_type_ = INTS;
-  num_value_.int_value_ = val;
+  int_value_ = val;
   length_ = sizeof(val);
 }
 
 void Value::set_date(int date) {
   attr_type_ = DATES;
-  num_value_.date_value_ = date;
+  int_value_ = date;
   length_ = sizeof(date);
 }
 
 void Value::set_float(float val)
 {
   attr_type_ = FLOATS;
-  num_value_.float_value_ = val;
+  float_value_ = val;
   length_ = sizeof(val);
 }
 void Value::set_boolean(bool val)
 {
   attr_type_ = BOOLEANS;
-  num_value_.bool_value_ = val;
+  bool_value_ = val;
   length_ = sizeof(val);
 }
 void Value::set_string(const char *s, int len /*= 0*/)
@@ -139,7 +136,7 @@ void Value::set_date(const char *s) {
   bool b = check_date(y,m,d);
   // if(!b) return -1;
   int dv = y*10000+m*100+d;
-  num_value_.date_value_ = dv;
+  int_value_ = dv;
   length_ = sizeof(dv);
 }
 
@@ -183,13 +180,13 @@ const char *Value::data() const
       return str_value_.c_str();
     } break;
     case FLOATS: {
-      return (const char *)&num_value_.float_value_;
+      return (const char *)&float_value_;
     } break;
     case BOOLEANS: {
-      return (const char *)&num_value_.bool_value_;
+      return (const char *)&bool_value_;
     } break;
     default: {
-      return (const char *)&num_value_;
+      return (const char *)&int_value_;
     } break;
   }
 }
@@ -199,16 +196,16 @@ std::string Value::to_string() const
   std::stringstream os;
   switch (attr_type_) {
     case INTS: {
-      os << num_value_.int_value_;
+      os << int_value_;
     } break;
     case FLOATS: {
-      os << common::double_to_str(num_value_.float_value_);
+      os << common::double_to_str(float_value_);
     } break;
     case DATES: {
-      os << common::date_to_str(num_value_.date_value_);
+      os << common::date_to_str(int_value_);
     }break;
     case BOOLEANS: {
-      os << num_value_.bool_value_;
+      os << bool_value_;
     } break;
     case CHARS: {
       os << str_value_;
@@ -229,10 +226,10 @@ int Value::compare(const Value &other) const
     switch (this->attr_type_) {
       case DATES:     
       case INTS: {
-        return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other.num_value_.int_value_);
+        return common::compare_int((void *)&this->int_value_, (void *)&other.int_value_);
       } break;
       case FLOATS: {
-        return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other.num_value_.float_value_);
+        return common::compare_float((void *)&this->float_value_, (void *)&other.float_value_);
       } break;
       case CHARS: {
         return common::compare_string((void *)this->str_value_.c_str(),
@@ -241,18 +238,18 @@ int Value::compare(const Value &other) const
             other.str_value_.length());
       } break;
       case BOOLEANS: {
-        return common::compare_int((void *)&this->num_value_.bool_value_, (void *)&other.num_value_.bool_value_);
+        return common::compare_int((void *)&this->bool_value_, (void *)&other.bool_value_);
       }
       default: {
         LOG_WARN("unsupported type: %d", this->attr_type_);
       }
     }
   } else if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
-    float this_data = this->num_value_.int_value_;
-    return common::compare_float((void *)&this_data, (void *)&other.num_value_.float_value_);
+    float this_data = this->int_value_;
+    return common::compare_float((void *)&this_data, (void *)&other.float_value_);
   } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
-    float other_data = other.num_value_.int_value_;
-    return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
+    float other_data = other.int_value_;
+    return common::compare_float((void *)&this->float_value_, (void *)&other_data);
   } else if (this->attr_type_ == CHARS) {
     float str_float = common::stringToNumber(str_value_);
     Value temp = Value(str_float);
@@ -277,17 +274,15 @@ int Value::get_int() const
         return 0;
       }
     }
+    case DATES: 
     case INTS: {
-      return num_value_.int_value_;
-    }
-    case DATES: {
-      return num_value_.date_value_;
+      return int_value_;
     }
     case FLOATS: {
-      return (int)(num_value_.float_value_);
+      return (int)(float_value_);
     }
     case BOOLEANS: {
-      return (int)(num_value_.bool_value_);
+      return (int)(bool_value_);
     }
     default: {
       LOG_WARN("unknown data type. type=%d", attr_type_);
@@ -309,13 +304,13 @@ float Value::get_float() const
       }
     } break;
     case INTS: {
-      return float(num_value_.int_value_);
+      return float(int_value_);
     } break;
     case FLOATS: {
-      return num_value_.float_value_;
+      return float_value_;
     } break;
     case BOOLEANS: {
-      return float(num_value_.bool_value_);
+      return float(bool_value_);
     } break;
     default: {
       LOG_WARN("unknown data type. type=%d", attr_type_);
@@ -352,14 +347,14 @@ bool Value::get_boolean() const
       }
     } break;
     case INTS: {
-      return num_value_.int_value_ != 0;
+      return int_value_ != 0;
     } break;
     case FLOATS: {
-      float val = num_value_.float_value_;
+      float val = float_value_;
       return val >= EPSILON || val <= -EPSILON;
     } break;
     case BOOLEANS: {
-      return num_value_.bool_value_;
+      return bool_value_;
     } break;
     default: {
       LOG_WARN("unknown data type. type=%d", attr_type_);

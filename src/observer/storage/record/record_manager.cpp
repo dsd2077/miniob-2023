@@ -271,6 +271,7 @@ RC RecordPageHandler::update_record(const RID *rid,
   // 需不需要加锁？
   char *record_data = get_record_data(rid->slot_num);
   for(int i = 0 ; i < fields_metas.size() ; i ++ ) {
+    fields_metas[i].type();
     memcpy(record_data + fields_metas[i].offset(), values[i].data(), fields_metas[i].len());  // 按照字段写记录
   }
   // memcpy(record_data + field_meta->offset(), value.data(), field_meta->len());

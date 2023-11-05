@@ -79,23 +79,6 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
 
     attr_names.emplace_back(attr_name);
   }
-  // check fields type
-  // 要根据属性的名字取获取对应的field_meta
-  // const FieldMeta *field_meta = table_meta.field(update.attribute_name.c_str());
-  // if (nullptr == field_meta) {
-  //   LOG_WARN("field =%s not exist in table=%s", update.attribute_name.c_str(), table_name);
-  //   return RC::FILE_NOT_EXIST;
-  // }
-  // const AttrType field_type = field_meta->type();
-  // const AttrType value_type = value.attr_type();
-  // if (field_type == DATES && !common::is_valid_date(value.get_int())) {
-  //   return RC::INVALID_ARGUMENT;
-  // }
-  // if (field_type != value_type) {
-  //   LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
-  //         table_name, field_meta->name(), field_type, value_type);
-  //   return RC::SCHEMA_FIELD_TYPE_MISMATCH;
-  // }
 
   // table_map的作用?
   std::unordered_map<std::string, Table *> table_map;

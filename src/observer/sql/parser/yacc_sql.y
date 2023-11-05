@@ -538,14 +538,11 @@ value:
       $$ = new Value((float)$1);
       @$ = @1;
     }
-    //| SUB NUMBER %prec SUB {
-    //  $$ = new Value(-(int)$2);
-    //  @$ = @1;
-    //}
-    //| SUB FLOAT %prec SUB {
-    //  $$ = new Value(-(float)$2);
-    //  @$ = @1;
-    //}
+    | NULL_VALUE {
+      $$ = new Value(0);
+      $$->set_null();
+      @$ = @1;
+    }
     | DATE {    // T1修改点
       char *tmp = common::substr($1,1,strlen($1)-2);
       $$ = new Value(tmp, 0, true);    // 构建Date类型的Value

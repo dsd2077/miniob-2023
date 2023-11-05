@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -74,7 +75,33 @@ public:
   void set_date(const char *s);
   void set_date(int date);
   void set_value(const Value &value);
-  bool is_null() const { return AttrType::NULLS == attr_type_; }
+  bool is_null() const { 
+    if (AttrType::NULLS == attr_type_) {
+      return true;
+    }
+
+    switch (attr_type_) {
+      case FLOATS: {
+        if (std::abs(get_float() - 0) < 1e-6) {
+          return true;
+        }
+      } break;
+      case CHARS: {
+        if (str_value_ == "") {
+          return true;
+        }
+      } break;
+      case DATES:
+      case INTS: {
+        if (get_int() == 0) {
+          return true;
+        } 
+      } break;
+      default: {
+      }
+    }
+    return false;
+  }
 
   bool in_cells(const std::vector<Value> &cells) const
   {
@@ -97,7 +124,17 @@ public:
     return true;
   }
 
-  void set_null() { this->attr_type_ = AttrType::NULLS; }
+  // 如果可以提前知道value的类型，就可以用这个方法！否则就不行
+  void check_null() {
+    if (is_null()) {
+      set_null();
+    }
+  }
+
+  void set_null() {
+    int_value_ = 0;
+    this->attr_type_ = AttrType::NULLS;
+  }
 
   std::string to_string() const;
 
@@ -165,11 +202,9 @@ private:
   AttrType attr_type_ = UNDEFINED;
   int length_ = 0;
 
-  union {
-    int int_value_;
-    float float_value_;
-    bool bool_value_;
-    int date_value_;
-  } num_value_;
+  int         int_value_;
+  float       float_value_;
+  bool        bool_value_;
   std::string str_value_;
+  bool is_null_ ;      // 是否可为空
 };

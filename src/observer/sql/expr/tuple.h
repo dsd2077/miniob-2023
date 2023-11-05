@@ -213,6 +213,11 @@ public:
     const FieldMeta *field_meta = field_expr->field().meta();
     cell.set_type(field_meta->type());
     cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    // 判断值是否为空，如果为空，则设置为空
+    // 空值需要用一个掩码来表示
+    // 用一个特殊位来表示是否可以为空，用一个特殊值来表示它是否为空
+    cell.check_null();
+
     return RC::SUCCESS;
   }
 
@@ -259,7 +264,7 @@ public:
 
 
 private:
-    Record *record_ = nullptr;
+  Record *record_ = nullptr;
   const Table *table_ = nullptr;
   std::vector<FieldExpr *> speces_;
 };

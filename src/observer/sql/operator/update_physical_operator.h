@@ -13,7 +13,7 @@
 #include "sql/operator/physical_operator.h"
 #include "sql/parser/parse.h"
 
-
+class UpdateStmt;
 /**
  * @brief 更新物理算子
  * @ingroup PhysicalOperator
@@ -21,8 +21,7 @@
 class UpdatePhysicalOperator : public PhysicalOperator
 {
 public:
-  UpdatePhysicalOperator(Table *table, std::vector<Value> values, std::vector<std::string> attributes_names) 
-  : table_(table), values_(values), attributes_names_(attributes_names) {}
+  UpdatePhysicalOperator(UpdateStmt *update_stmt) :update_stmt_(update_stmt) {}
 
   virtual ~UpdatePhysicalOperator() = default;
 
@@ -37,11 +36,6 @@ public:
   Tuple *current_tuple() override { return nullptr; }
 
 private:
-  Table *table_ = nullptr;
   Trx *trx_ = nullptr;
-  // Value value_;
-  // std::string attribute_name_;
-
-  std::vector<Value> values_;   // 值
-  std::vector<std::string> attributes_names_; // 属性名
+  UpdateStmt *update_stmt_ = nullptr;
 };

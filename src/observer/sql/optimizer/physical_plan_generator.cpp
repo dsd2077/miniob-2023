@@ -43,6 +43,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/groupby_physical_operator.h"
 #include "sql/operator/empty_table_get_logical_oper.h"
 #include "sql/operator/empty_table_get_physical_oper.h"
+#include "sql/stmt/update_stmt.h"
 
 using namespace std;
 
@@ -277,8 +278,6 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
 
   ProjectPhysicalOperator *project_operator = new ProjectPhysicalOperator(project_oper.expressions());      
 
-
-
   if (child_phy_oper) {
     project_operator->add_child(std::move(child_phy_oper));
   }
@@ -331,9 +330,7 @@ RC PhysicalPlanGenerator::create_plan(DeleteLogicalOperator &delete_oper, unique
 RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &update_oper, std::unique_ptr<PhysicalOperator> &oper,
         LogicalOperatorType parent_oper_type) {
   vector<unique_ptr<LogicalOperator>> &child_opers = update_oper.children();
-
   unique_ptr<PhysicalOperator> child_physical_oper;
-
   RC rc = RC::SUCCESS;
   if (!child_opers.empty()) {
     LogicalOperator *child_oper = child_opers.front().get();
@@ -343,16 +340,21 @@ RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &update_oper, std::u
       return rc;
     }
   }
-
-  std::vector<std::string> attrs;
-  std::vector<Value> vals;
-  update_oper.attributes_names(attrs);
-  update_oper.values(vals);
-
-  oper = unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(update_oper.table(),vals, attrs));
-
+  // 为子查询创建物理计划
+  for (auto expr : update_oper.update_stmt()->exprs()) {
+    if (ExprType::SUBQUERY == expr->type()) {
+      SubQueryExpression *sub_query_expr = dynamic_cast<SubQueryExpression *>(expr);
+      unique_ptr<PhysicalOperator> physical_operator;
+      ProjectLogicalOperator *logical_oper = dynamic_cast<ProjectLogicalOperator *>(sub_query_expr->get_logical_oper());
+      if (RC::SUCCESS != (rc = create_plan(*logical_oper, physical_operator, parent_oper_type))) {
+        return rc;
+      }
+      assert(nullptr != physical_operator);
+      sub_query_expr->set_physical_oper(physical_operator.release());
+    }
+  }
+  oper = unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(update_oper.update_stmt()));
   oper->setParentOperType(parent_oper_type);
-
   if (child_physical_oper) {
     oper->add_child(std::move(child_physical_oper));
   }

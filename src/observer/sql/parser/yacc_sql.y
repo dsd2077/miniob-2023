@@ -150,7 +150,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Relation *                        relation_item;
   std::vector<Relation> *           relation_list;
 
-  std::vector<SetSqlNode> *         set_attrs;
+  SetSqlNode *                      update_item;
+  std::vector<SetSqlNode> *         update_item_list;
 
   char *                            string;
   int                               number;
@@ -194,7 +195,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_list>           attr_list_index
 
 %type <expression_list>     expression_list
-%type <set_attrs>           set_attr_list
 %type <sql_node>            calc_stmt
 %type <sql_node>            select_stmt     
 %type <sql_node>            insert_stmt
@@ -243,6 +243,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <expression>          having 
 %type <expression>          having_condition_list 
 %type <expression>          having_condition
+%type <update_item>         update_item
+%type <update_item_list>    update_item_list
 
 
 
@@ -440,7 +442,7 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = CHARS;
       $$->name = $1;
-      $$->length = 4094;
+      $$->length = 4000;
       free($1);
 		}
     |ID type LBRACE number RBRACE NOT NULL_VALUE
@@ -568,49 +570,50 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value set_attr_list where 
+    UPDATE ID SET update_item update_item_list where 
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-
-      SetSqlNode *col = new SetSqlNode;
-      col->attribute_name = $4;
-      col->value = *$6;
-      
-      std::vector<SetSqlNode> *sets = $7;
-      if (nullptr != $7) {
-        $$->update.set_cols.swap(*sets);
-      }
-      $$->update.set_cols.emplace_back(*col);
-
-      if ($8 != nullptr) {
-        $$->update.conditions = $8;
-      }
-      free($2);
-      free($4);
-    }
-    ;
-
-set_attr_list:
-    /* empty */
-    {
-      $$ = nullptr;
-    }
-    | COMMA ID EQ value set_attr_list
-    {
-      $$ = new std::vector<SetSqlNode>;
-      SetSqlNode *col = new SetSqlNode;
-      col->attribute_name = $2;
-      col->value = *$4;
       
       std::vector<SetSqlNode> *sets = $5;
-      if(nullptr != sets) {
-        $$->swap(*sets);
+      if (sets == nullptr) {
+        sets = new std::vector<SetSqlNode>;
       }
-      $$->emplace_back(*col);
-      free($2);
+      sets->emplace_back(*$4);
+      delete $4;
+      $$->update.set_cols.swap(*sets);
+
+      if ($6 != nullptr) {
+        $$->update.conditions = $6;
+      }
     }
     ;
+
+update_item:    // 返回SetSqlNode*
+  ID EQ value {
+    $$ = new SetSqlNode;
+    $$->attribute_name = $1;
+    $$->expr = new ValueExpr(*$3);
+  }
+  | ID EQ sub_select_expr {
+    $$ = new SetSqlNode;
+    $$->attribute_name = $1;
+    $$->expr = $3;
+  }
+  ;
+
+update_item_list: // 返回std::vector<SetSqlNode>*
+  {
+    $$ = nullptr;
+  }
+  | COMMA update_item update_item_list {
+    $$ = $3;
+    if ($$ == nullptr) {
+      $$ = new std::vector<SetSqlNode>;
+    }
+    $$->emplace_back(*$2);
+    delete $2;
+  }
 
 select_stmt:        /*  select 语句的语法解析树*/
     SELECT select_attr SEMICOLON {

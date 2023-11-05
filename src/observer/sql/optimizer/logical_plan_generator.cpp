@@ -112,6 +112,7 @@ RC LogicalPlanGenerator::create_plan(
       }
     }
   } else {
+    // 没有from及其后面的子句，执行的是表达式计算
     unique_ptr<LogicalOperator> emp_table_oper(new EmptyTableGetLogicalOperator());
     table_oper = std::move(emp_table_oper);
   }
@@ -338,30 +339,43 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<Lo
   // 为where子句创建计划
   Table *table = update_stmt->table();
   unique_ptr<LogicalOperator> table_get_oper(new TableGetLogicalOperator(table, false/*readonly*/));
+  std::unique_ptr<LogicalOperator> top_oper = std::move(table_get_oper);
 
   RC rc = RC::SUCCESS;
-  unique_ptr<LogicalOperator> predicate_oper;       
-  if( update_stmt->filter_stmt() != nullptr) {
+  unique_ptr<LogicalOperator> predicate_oper;
+  if (update_stmt->filter_stmt() != nullptr) {
+    // 为子查询生成逻辑执行计划
+    ConjunctionExpr * temp = dynamic_cast<ConjunctionExpr*>(update_stmt->filter_stmt()->predicate().get());
+    assert(temp != nullptr);
+    for (auto &expr : temp->children()) {   // child为ComparisonExpr
+      create_plan_for_subquery(expr);
+    }
+
     rc = create_plan(update_stmt->filter_stmt(), predicate_oper);
+    predicate_oper->add_child(std::move(top_oper));
+    top_oper = std::move(predicate_oper);
   }
   if (rc != RC::SUCCESS) {
+    LOG_WARN("failed to create predicate logical plan. rc=%s", strrc(rc));
     return rc;
   }
 
-  // 获取stmt中的属性和值
-  std::vector<std::string> attrs;
-  std::vector<Value> vals;
-  update_stmt->attributes_names(attrs);
-  update_stmt->values(vals);
-
-  unique_ptr<LogicalOperator> update_oper(new UpdateLogicalOperator(table, vals, attrs)); // update operator
-
-  if (predicate_oper) {
-    predicate_oper->add_child(std::move(table_get_oper));
-    update_oper->add_child(std::move(predicate_oper));
-  } else {
-    update_oper->add_child(std::move(table_get_oper));
+  // 为所有的子查询生成逻辑计划 
+  for (auto expr : update_stmt->exprs()) {
+    if (ExprType::SUBQUERY == expr->type()) {
+      SubQueryExpression* sub_query_expr = dynamic_cast<SubQueryExpression *>(expr) ;
+      SelectStmt *sub_select = sub_query_expr->get_sub_query_stmt();
+      unique_ptr<LogicalOperator> logical_operator;
+      if (RC::SUCCESS != (rc = create_plan(sub_select, logical_operator))) {   
+        return rc;
+      }
+      assert(nullptr != logical_operator);
+      sub_query_expr->set_logical_oper(logical_operator.release());
+    }
   }
+
+  unique_ptr<LogicalOperator> update_oper(new UpdateLogicalOperator(update_stmt)); // update operator
+  update_oper->add_child(std::move(top_oper));
 
   logical_operator = std::move(update_oper);
   return rc;

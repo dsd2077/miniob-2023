@@ -229,7 +229,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     empty_result = false;
   }
   // 如果结果为空，需要给聚集函数输出NULL
-  if (empty_result) {
+  if (empty_result && project_oper != nullptr) {
     bool is_all_aggfunc = true;
     for (int i = 0; i < project_oper->cell_num(); i++) {
       Expression *temp = nullptr;

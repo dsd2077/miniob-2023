@@ -440,7 +440,7 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = CHARS;
       $$->name = $1;
-      $$->length = 8184;
+      $$->length = 4094;
       free($1);
 		}
     |ID type LBRACE number RBRACE NOT NULL_VALUE

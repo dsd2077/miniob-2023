@@ -627,8 +627,11 @@ RC Table::update_record(const Record &record, std::vector<Value> &values, std::v
   memcpy(old_data, record.data(), record.len());
   // 先从索引中删除当前值，注意参数record是原始记录
   RC rc = RC::SUCCESS;
-  delete_entry_of_indexes(record.data(), record.rid(), true);
-
+  rc = delete_entry_of_indexes(record.data(), record.rid(), true);
+  if(rc != RC::SUCCESS) {
+    LOG_ERROR("Fail to delete entry of old record");
+    return rc;
+  }
   // 将表中的记录更新
   std::vector<FieldMeta> fields;
   table_meta_.fields_by_attrs(fields, attributes_names);  
@@ -648,18 +651,21 @@ RC Table::update_record(const Record &record, std::vector<Value> &values, std::v
   rc = insert_entry_of_indexes(record.data(), record.rid());  // 更新前后rid是不变的，这里可能插入失败
   if (rc != RC::SUCCESS) { // 可能出现了键值重复
     std::cout << "fail to update entry to indexs , rc = " << strrc(rc) << std::endl;
-    RC rc2 = record_handler_->delete_record(&record.rid());  // 撤销记录，恢复为原来的内容
-    if (rc2 != RC::SUCCESS) {
-      LOG_PANIC("Failed to rollback record data when insert index entries failed. table name=%s, rc=%d:%s",
-                name(), rc2, strrc(rc2));
-    }
-    RID* recover_rid = new RID;
-    rc2 = record_handler_->insert_record(old_data, table_meta_.record_size(), recover_rid);
-    if(rc2 != RC::SUCCESS) {
-      LOG_ERROR("Fail to rollback transaction: page record recover error!");
-    }
-    std::cout << "Recover rid is " << recover_rid->to_string() << ", and origin record is " << record.rid().to_string() <<std::endl;
-    rc2 = insert_entry_of_indexes(old_data, record.rid());  // 回滚，插入原来的索引项
+    // RC rc2 = record_handler_->delete_record(&record.rid());  // 撤销记录，恢复为原来的内容
+    // if (rc2 != RC::SUCCESS) {
+    //   LOG_PANIC("Failed to rollback record data when insert index entries failed. table name=%s, rc=%d:%s",
+    //             name(), rc2, strrc(rc2));
+    // }
+    // RID* recover_rid = new RID;
+    // rc2 = record_handler_->insert_record(old_data, table_meta_.record_size(), recover_rid);
+    // if(rc2 != RC::SUCCESS) {
+    //   LOG_ERROR("Fail to rollback transaction: page record recover error!");
+    // }
+    // 直接替换为原始内容
+    record_handler_->set_record(old_data, record.rid(), table_meta_.record_size());
+    std::cout << "----------recover : set record " << record.rid().to_string() << std::endl;
+    // std::cout << "Recover rid is " << recover_rid->to_string() << ", and origin record is " << record.rid().to_string() <<std::endl;
+    RC rc2 = insert_entry_of_indexes(old_data, record.rid());  // 回滚，插入原来的索引项
     if(rc2 != RC::SUCCESS) {
       LOG_ERROR("Fail to rollback transaction: index recover error!");
     }

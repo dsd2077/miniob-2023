@@ -277,6 +277,13 @@ RC RecordPageHandler::update_record(const RID *rid,
   return RC::SUCCESS;
 }
 
+RC RecordPageHandler::set_record(const char *data, const RID &rid, int len)
+{
+  char *record_data = get_record_data(rid.slot_num);
+  memcpy(record_data, data, len);
+  return RC::SUCCESS;
+}
+
 RC RecordPageHandler::get_record(const RID *rid, Record *rec)
 {
   if (rid->slot_num >= page_header_->record_capacity) {
@@ -483,6 +490,19 @@ RC RecordFileHandler::update_record(const RID *rid, std::vector<FieldMeta> &fiel
   return rc;
 }
 
+RC RecordFileHandler::set_record(const char *record_data, const RID &rid, int len)
+{
+  RC rc = RC::SUCCESS;
+
+  RecordPageHandler page_handler;
+  if ((rc = page_handler.init(*disk_buffer_pool_, rid.page_num, false)) != RC::SUCCESS) {
+    LOG_ERROR("Failed to init record page handler.page number=%d. rc=%s", rid.page_num, strrc(rc));
+    return rc;
+  }
+  
+  page_handler.set_record(record_data, rid, len);
+  return RC::SUCCESS;
+}
 
 RC RecordFileHandler::get_record(RecordPageHandler &page_handler, const RID *rid, bool readonly, Record *rec)
 {

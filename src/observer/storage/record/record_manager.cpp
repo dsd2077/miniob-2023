@@ -274,6 +274,7 @@ RC RecordPageHandler::update_record(const RID *rid,
     fields_metas[i].type();
     memcpy(record_data + fields_metas[i].offset(), values[i].data(), fields_metas[i].len());  // 按照字段写记录
   }
+  frame_->mark_dirty();
   // memcpy(record_data + field_meta->offset(), value.data(), field_meta->len());
   return RC::SUCCESS;
 }

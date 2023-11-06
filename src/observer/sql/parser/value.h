@@ -109,17 +109,17 @@ public:
     bool is_null = false;
     switch (attr_type_) {
       case FLOATS: {
-        if (std::abs(get_float() - 126) < 1e-6) {
+        if (std::abs(get_float() - 16777216) < 1e-6) {
           is_null = true;
         }
       } break;
       case CHARS: {
-        if (str_value_ == "~") {
+        if (str_value_ == "") {
           is_null = true;
         }
       } break;
       default: {
-        if (get_int() == 126) {
+        if (get_int() == 16777216) {
           is_null = true;
         } 
       }
@@ -130,7 +130,7 @@ public:
   }
 
   void set_null() {
-    int_value_ = 126;
+    int_value_ = 16777216;
     this->attr_type_ = AttrType::NULLS;
   }
 

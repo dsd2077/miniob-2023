@@ -237,9 +237,13 @@ int Value::compare(const Value &other) const
             (void *)other.str_value_.c_str(),
             other.str_value_.length());
       } break;
+      case NULLS: {
+        return other.is_null() ? 0 : -1;
+      }
       case BOOLEANS: {
         return common::compare_int((void *)&this->bool_value_, (void *)&other.bool_value_);
-      }
+      } 
+
       default: {
         LOG_WARN("unsupported type: %d", this->attr_type_);
       }

@@ -80,26 +80,6 @@ public:
       return true;
     }
 
-    switch (attr_type_) {
-      case FLOATS: {
-        if (std::abs(get_float() - 0) < 1e-6) {
-          return true;
-        }
-      } break;
-      case CHARS: {
-        if (str_value_ == "") {
-          return true;
-        }
-      } break;
-      case DATES:
-      case INTS: {
-        if (get_int() == 0) {
-          return true;
-        } 
-      } break;
-      default: {
-      }
-    }
     return false;
   }
 
@@ -124,15 +104,33 @@ public:
     return true;
   }
 
-  // 如果可以提前知道value的类型，就可以用这个方法！否则就不行
+  // check_null仅用于从磁盘中读取数据时，作为NULL的判定标准
   void check_null() {
-    if (is_null()) {
+    bool is_null = false;
+    switch (attr_type_) {
+      case FLOATS: {
+        if (std::abs(get_float() - 94) < 1e-6) {
+          is_null = true;
+        }
+      } break;
+      case CHARS: {
+        if (str_value_ == "^") {
+          is_null = true;
+        }
+      } break;
+      default: {
+        if (get_int() == 94) {
+          is_null = true;
+        } 
+      }
+    }
+    if (is_null) {
       set_null();
     }
   }
 
   void set_null() {
-    int_value_ = 0;
+    int_value_ = 94;
     this->attr_type_ = AttrType::NULLS;
   }
 

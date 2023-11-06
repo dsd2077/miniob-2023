@@ -364,6 +364,7 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, std::unique_ptr<Lo
   for (auto expr : update_stmt->exprs()) {
     if (ExprType::SUBQUERY == expr->type()) {
       SubQueryExpression* sub_query_expr = dynamic_cast<SubQueryExpression *>(expr) ;
+      assert(nullptr != sub_query_expr);
       SelectStmt *sub_select = sub_query_expr->get_sub_query_stmt();
       unique_ptr<LogicalOperator> logical_operator;
       if (RC::SUCCESS != (rc = create_plan(sub_select, logical_operator))) {   

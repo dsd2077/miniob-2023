@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/stmt/update_stmt.h"
 #include "common/lang/string.h"
+#include "common/log/log.h"
 #include "sql/stmt/filter_stmt.h"
 #include "storage/db/db.h"
 
@@ -66,7 +67,11 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
 
       const std::unordered_map<std::string, Table *> table_map;
       const std::vector<Table *> tables;
-      expr->init(tables, table_map, db);
+      RC rc = expr->init(tables, table_map, db);
+      if (RC::SUCCESS != rc) {
+        LOG_ERROR("init subQueryExpression Failed");
+        return rc;
+      }
       expressions.emplace_back(expr);
       fields.emplace_back(field_meta);
       break;

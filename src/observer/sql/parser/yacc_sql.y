@@ -434,7 +434,7 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      $$->length = $4+4;
       free($1);
     }
     | ID TEXT
@@ -450,7 +450,7 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      $$->length = $4+4;
       free($1);
 		}
     |ID type LBRACE number RBRACE NULL_VALUE
@@ -458,7 +458,7 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      $$->length = $4+4;
       $$->nullable = true;
       free($1);
 		}

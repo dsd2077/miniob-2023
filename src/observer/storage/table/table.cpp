@@ -340,8 +340,9 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   char *record_data = (char *)malloc(record_size);      // 一个Record的大小是固定的,应该是创建表的时候确定的
 
   for (int i = 0; i < value_num; i++) {
-    const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
-    const Value &value = values[i];
+    FieldMeta *field = const_cast<FieldMeta*>(table_meta_.field(i + normal_field_start_index));
+    Value &value = const_cast<Value&>(values[i]);
+    value.set_type(field->type());
     size_t copy_len = field->len();
     if (field->type() == CHARS) {
       const size_t data_len = value.length();

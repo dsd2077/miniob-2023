@@ -76,10 +76,9 @@ public:
   void set_date(int date);
   void set_value(const Value &value);
   bool is_null() const { 
-    if (AttrType::NULLS == attr_type_) {
+    if (AttrType::NULLS == attr_type_ || (AttrType::CHARS == attr_type_ && str_value_ == "NULL")) {
       return true;
     }
-
     return false;
   }
 
@@ -114,7 +113,7 @@ public:
         }
       } break;
       case CHARS: {
-        if (str_value_ == "") {
+        if (str_value_ == "NULL") {
           is_null = true;
         }
       } break;
@@ -130,7 +129,9 @@ public:
   }
 
   void set_null() {
-    int_value_ = 16777216;
+    str_value_       = "NULL";
+    int_value_       = 16777216;
+    float_value_ = 16777216;
     this->attr_type_ = AttrType::NULLS;
   }
 

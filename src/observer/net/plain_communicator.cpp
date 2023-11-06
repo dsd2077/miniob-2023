@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/io/io.h"
 #include "common/log/log.h"
 #include "sql/operator/project_physical_operator.h"
+#include "sql/parser/parse_defs.h"
 #include <string>
 
 PlainCommunicator::PlainCommunicator()
@@ -245,9 +246,17 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
         if (i != 0) {
           res += " | ";
         }
-        Value value;
-        value.set_null();
-        res += value.to_string();
+        Expression *expr;
+        project_oper->expression_at(i, expr);
+        AggrFuncExpression * agg_expr = dynamic_cast<AggrFuncExpression*>(expr);
+        if (AggrFuncType::CNT == agg_expr->get_aggr_func_type()) {
+          Value value(0);
+          res += value.to_string();
+        } else {
+          Value value;
+          value.set_null();
+          res += value.to_string();
+        }
       }
       res += '\n';
       rc = writer_->writen(res.c_str(), res.size());

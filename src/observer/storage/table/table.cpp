@@ -617,44 +617,63 @@ RC Table::delete_record(const Record &record)
 
 // 适应多列update
 RC Table::update_record(const Record &record, std::vector<Value> &values, std::vector<std::string> &attributes_names) {
+
+  // 1. 删除old_record索引项
+  // 2. 更新old_record物理存储
+  // 3. 插入新record索引项
+  // 4. 如果新record索引项插入失败，就回滚
+
+  // 回滚：
+  // 1. 恢复物理存储
+  // 2. 插入old_record索引项
+
+  char *old_data = new (std::nothrow) char[record.len()];
+  memcpy(old_data, record.data(), record.len());
   // 先从索引中删除当前值，注意参数record是原始记录
   RC rc = RC::SUCCESS;
-  delete_entry_of_indexes(record.data(), record.rid(), true);
-
+  rc = delete_entry_of_indexes(record.data(), record.rid(), true);
+  if(rc != RC::SUCCESS) {
+    LOG_ERROR("Fail to delete entry of old record");
+    return rc;
+  }
   // 将表中的记录更新
   std::vector<FieldMeta> fields;
   table_meta_.fields_by_attrs(fields, attributes_names);  
   // const FieldMeta *field_meta = table_meta_.field(attribute_name.c_str());
-  rc = record_handler_->update_record(&record.rid(), fields, values);
+  rc = record_handler_->update_record(&record.rid(), fields, values);   // 这里将record的data修改为set值
 
   // 再插入更新后的值；这里原来的写法是错误的，record并没有改变，原来的写法这里相当于删除了索引又插入回去了，索引和表中数据会不一致！！！
   // rc = insert_entry_of_indexes(record.data(), record.rid());  // ??? 这里record仍然为原来的记录，上面的操作并没有修改record，那这里插入索引的难道不还是原来的record？
   // 重新从page获取rid所在的record
-  Record record_bak;  // 更新后的record
-  rc = get_record(record.rid(), record_bak);
+  // Record record_bak;  // 更新后的record
+  // rc = get_record(record.rid(), record_bak);
   if(rc != RC::SUCCESS) {
     // 更新后的record获取失败
     LOG_ERROR("Fail to get updated record to prevent transaction from rollback error!");
     return rc;
   }
-  rc = insert_entry_of_indexes(record.data(), record.rid());  // 更新前后rid是不变的
+  rc = insert_entry_of_indexes(record.data(), record.rid());  // 更新前后rid是不变的，这里可能插入失败
   if (rc != RC::SUCCESS) { // 可能出现了键值重复
     std::cout << "fail to update entry to indexs , rc = " << strrc(rc) << std::endl;
-    RC rc2 = delete_entry_of_indexes(record.data(), record.rid(), false/*error_on_not_exists*/);
-    if (rc2 != RC::SUCCESS) {
-      LOG_ERROR("Failed to rollback index data when insert index entries failed. table name=%s, rc=%d:%s",
-                name(), rc2, strrc(rc2));
-    }
-    rc2 = record_handler_->delete_record(&record.rid());  // 撤销记录，恢复为原来的内容
-    if (rc2 != RC::SUCCESS) {
-      LOG_PANIC("Failed to rollback record data when insert index entries failed. table name=%s, rc=%d:%s",
-                name(), rc2, strrc(rc2));
+    // RC rc2 = record_handler_->delete_record(&record.rid());  // 撤销记录，恢复为原来的内容
+    // if (rc2 != RC::SUCCESS) {
+    //   LOG_PANIC("Failed to rollback record data when insert index entries failed. table name=%s, rc=%d:%s",
+    //             name(), rc2, strrc(rc2));
+    // }
+    // RID* recover_rid = new RID;
+    // rc2 = record_handler_->insert_record(old_data, table_meta_.record_size(), recover_rid);
+    // if(rc2 != RC::SUCCESS) {
+    //   LOG_ERROR("Fail to rollback transaction: page record recover error!");
+    // }
+    // 直接替换为原始内容
+    record_handler_->set_record(old_data, record.rid(), table_meta_.record_size());
+    std::cout << "----------recover : set record " << record.rid().to_string() << std::endl;
+    // std::cout << "Recover rid is " << recover_rid->to_string() << ", and origin record is " << record.rid().to_string() <<std::endl;
+    RC rc2 = insert_entry_of_indexes(old_data, record.rid());  // 回滚，插入原来的索引项
+    if(rc2 != RC::SUCCESS) {
+      LOG_ERROR("Fail to rollback transaction: index recover error!");
     }
     // 回滚，插入原来的record数据
-    rc2 = record_handler_->insert_record(record.data(), table_meta_.record_size(), &(const_cast<RID&>(record.rid())));
-    if(rc2 != RC::SUCCESS) {
-      LOG_ERROR("Fail to rollback transaction!");
-    }
   }
 
   return rc;

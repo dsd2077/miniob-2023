@@ -199,6 +199,14 @@ public:
   RC get_record(const RID *rid, Record *rec);
 
   /**
+   * @brief 设置指定rid的记录数据
+   * 
+   * @param rid 指定的位置
+   * @param data 数据内容
+  */
+  RC set_record(const char *data, const RID &rid, int len);
+
+  /**
    * @brief 返回该记录页的页号
    */
   PageNum get_page_num() const;
@@ -323,6 +331,14 @@ public:
    * @param visitor  访问记录的回调函数
    */
   RC visit_record(const RID &rid, bool readonly, std::function<void(Record &)> visitor);
+
+  /**
+   * @brief 最粗暴的方式，将rid的record数据直接进行替换
+   * 
+   * @param record_data 记录数据
+   * @param rid         记录RID
+  */
+  RC set_record(const char *record_data, const RID &rid, int len);
 
 private:
   /**

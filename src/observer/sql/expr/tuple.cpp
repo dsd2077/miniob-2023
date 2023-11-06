@@ -59,7 +59,7 @@ void GroupTuple::do_aggregate()
     switch (expr->get_aggr_func_type()) {
       case AggrFuncType::MIN: aggr_results_[i] = Value::min(aggr_results_[i], tmp); break;
       case AggrFuncType::MAX: aggr_results_[i] = Value::max(aggr_results_[i], tmp); break;
-      case AggrFuncType::SUM:
+      case AggrFuncType::SUM: 
       case AggrFuncType::AVG: aggr_results_[i] = Value::add(aggr_results_[i], tmp); break;
       default: LOG_ERROR("Unsupported AggrFuncType"); break;
     }

@@ -14,6 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -74,7 +75,12 @@ public:
   void set_date(const char *s);
   void set_date(int date);
   void set_value(const Value &value);
-  bool is_null() const { return AttrType::NULLS == attr_type_; }
+  bool is_null() const { 
+    if (AttrType::NULLS == attr_type_ || (AttrType::CHARS == attr_type_ && str_value_ == "NULL")) {
+      return true;
+    }
+    return false;
+  }
 
   bool in_cells(const std::vector<Value> &cells) const
   {
@@ -97,7 +103,37 @@ public:
     return true;
   }
 
-  void set_null() { this->attr_type_ = AttrType::NULLS; }
+  // check_null仅用于从磁盘中读取数据时，作为NULL的判定标准
+  void check_null() {
+    bool is_null = false;
+    switch (attr_type_) {
+      case FLOATS: {
+        if (std::abs(get_float() - 16777216) < 1e-6) {
+          is_null = true;
+        }
+      } break;
+      case CHARS: {
+        if (str_value_ == "NULL") {
+          is_null = true;
+        }
+      } break;
+      default: {
+        if (get_int() == 16777216) {
+          is_null = true;
+        } 
+      }
+    }
+    if (is_null) {
+      set_null();
+    }
+  }
+
+  void set_null() {
+    str_value_       = "NULL";
+    int_value_       = 16777216;
+    float_value_ = 16777216;
+    this->attr_type_ = AttrType::NULLS;
+  }
 
   std::string to_string() const;
 
@@ -165,11 +201,9 @@ private:
   AttrType attr_type_ = UNDEFINED;
   int length_ = 0;
 
-  union {
-    int int_value_;
-    float float_value_;
-    bool bool_value_;
-    int date_value_;
-  } num_value_;
+  int         int_value_;
+  float       float_value_;
+  bool        bool_value_;
   std::string str_value_;
+  bool is_null_ ;      // 是否可为空
 };

@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/select_stmt.h"
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/filter_stmt.h"
+#include "sql/stmt/groupby_stmt.h"
 #include "sql/stmt/order_by_stmt.h"
 #include "common/log/log.h"
 #include "common/lang/string.h"
@@ -333,6 +334,39 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
     return rc;
   }
 
+  OrderByStmt *orderby_stmt_for_groupby = nullptr;
+  GroupByStmt *groupby_stmt = nullptr;
+  if (!select_sql.group_by.empty()) {
+    std::vector<OrderByNode> temp;
+    // 取出group by中的所有属性
+    for (auto &rel_attr : select_sql.group_by) {
+      OrderByNode attr;
+      attr.attribute = rel_attr;
+      temp.push_back(attr);
+    }
+    rc = OrderByStmt::create(
+        db, default_table, &table_map, temp, orderby_stmt_for_groupby);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot construct order by stmt for groupby");
+      return rc;
+    }
+    rc = GroupByStmt::create(db, default_table, &table_map, select_sql.group_by, groupby_stmt);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot construct group by stmt");
+      return rc;
+    }
+  }
+
+  // create having filter statement in `having` clause
+  FilterStmt *having_stmt = nullptr;
+  if (nullptr != select_sql.havings) {
+    rc = FilterStmt::create(db, default_table, &table_map, select_sql.havings, having_stmt);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("cannot construct having filter stmt");
+      return rc;
+    }
+  }
+
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
   // TODO add expression copy
@@ -341,6 +375,10 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
   select_stmt->filter_stmt_ = filter_stmt;
   select_stmt->inner_join_filter_stmt_ = inner_join_filter_stmt;
   select_stmt->orderby_stmt_ = orderby_stmt;
+  select_stmt->groupby_stmt_ = groupby_stmt;
+  select_stmt->having_stmt_ = having_stmt;
+  select_stmt->orderby_stmt_for_groupby_ = orderby_stmt_for_groupby;
+
   stmt = select_stmt;
   return RC::SUCCESS;
 }

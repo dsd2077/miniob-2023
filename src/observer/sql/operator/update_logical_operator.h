@@ -15,6 +15,7 @@
 #include "sql/parser/parse_defs.h"
 #include "storage/table/table.h"
 
+class UpdateStmt;
 /**
  * @brief 更新逻辑算子
  * @ingroup LogicalOperator
@@ -22,35 +23,14 @@
 class UpdateLogicalOperator : public LogicalOperator
 {
 public:
-  UpdateLogicalOperator(Table *table, std::vector<Value> values, std::vector<std::string> attribute_name);
+  UpdateLogicalOperator(UpdateStmt *update_stmt) : update_stmt_(update_stmt){}
   virtual ~UpdateLogicalOperator() = default;
 
   LogicalOperatorType type() const override
   {
     return LogicalOperatorType::UPDATE;
   }
-
-  void attributes_names(std::vector<std::string> &res)
-  {
-    for(int i = 0 ; i < attributes_names_.size() ; i ++ ) {
-      res.emplace_back(attributes_names_[i]);
-    }
-  }
-
-  Table *table() const { return table_; }
-  // const Value value() const { return values_; }
-  // Value value() { return values_; }
-  void values(std::vector<Value> &res) const {
-    for(int i = 0 ; i < values_.size() ; i ++ ) {
-      res.emplace_back(values_[i]);
-    }
-  }
-
+  UpdateStmt *update_stmt() { return update_stmt_; }
 private:
-  Table *table_ = nullptr;
-  // Value values_;
-  // std::string attribute_name_;
-
-  std::vector<Value> values_;
-  std::vector<std::string> attributes_names_;
+  UpdateStmt *update_stmt_;
 };

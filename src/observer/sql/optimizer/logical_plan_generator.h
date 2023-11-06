@@ -45,7 +45,7 @@ private:
   RC create_plan(FilterStmt *filter_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
   RC create_plan(InsertStmt *insert_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
   RC create_plan(DeleteStmt *delete_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
-  RC create_plan(UpdateStmt *explain_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
+  RC create_plan(UpdateStmt *update_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
   RC create_plan(ExplainStmt *explain_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
   RC create_plan(OrderByStmt *order_by_stmt, std::unique_ptr<LogicalOperator> &logical_operator);
   RC create_plan_for_subquery(std::unique_ptr<Expression> &expr);

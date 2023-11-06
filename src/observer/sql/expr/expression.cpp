@@ -689,7 +689,7 @@ RC SubQueryExpression::init(const std::vector<Table *> &tables, const std::unord
 
 RC SubQueryExpression::open_sub_query() const
 {
-  assert(nullptr != physical_oper_);     //没有创建逻辑算子
+  assert(nullptr != physical_oper_);     
   return physical_oper_->open(nullptr);   
 }
 

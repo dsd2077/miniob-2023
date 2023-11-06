@@ -122,12 +122,15 @@ extern int yydebug;
     LENGTH = 323,                  /* LENGTH  */
     ROUND = 324,                   /* ROUND  */
     DATE_FORMAT = 325,             /* DATE_FORMAT  */
-    NUMBER = 326,                  /* NUMBER  */
-    FLOAT = 327,                   /* FLOAT  */
-    ID = 328,                      /* ID  */
-    DATE = 329,                    /* DATE  */
-    SSS = 330,                     /* SSS  */
-    UMINUS = 331                   /* UMINUS  */
+    GROUP = 326,                   /* GROUP  */
+    HAVING = 327,                  /* HAVING  */
+    TEXT = 328,                    /* TEXT  */
+    NUMBER = 329,                  /* NUMBER  */
+    FLOAT = 330,                   /* FLOAT  */
+    ID = 331,                      /* ID  */
+    DATE = 332,                    /* DATE  */
+    SSS = 333,                     /* SSS  */
+    UMINUS = 334                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -136,7 +139,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 130 "yacc_sql.y"
+#line 134 "yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   CompOp                            comp;
@@ -156,7 +159,8 @@ union YYSTYPE
   Relation *                        relation_item;
   std::vector<Relation> *           relation_list;
 
-  std::vector<SetSqlNode> *         set_attrs;
+  SetSqlNode *                      update_item;
+  std::vector<SetSqlNode> *         update_item_list;
 
   char *                            string;
   int                               number;
@@ -169,7 +173,7 @@ union YYSTYPE
   std::vector<OrderByNode> *        order_by_list;
   AggrFuncType                      aggr_func_type;
 
-#line 173 "yacc_sql.hpp"
+#line 177 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

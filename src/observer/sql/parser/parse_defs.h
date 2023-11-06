@@ -22,6 +22,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/value.h"
 
 class Expression;
+class SubQueryExpression;
 /**
  * @defgroup SQLParser SQL Parser 
  */
@@ -44,11 +45,6 @@ struct RelAttrSqlNode
 struct Relation {
   std::string relation_name;
   std::string alias;
-};
-
-struct  RelAttr{
-  std::string relation_name;   // relation name (may be NULL) 表名
-  std::string attribute_name;  // attribute name              属性名
 };
 
 // class Expression;
@@ -105,7 +101,7 @@ typedef enum { ASC_, DESC_ } OrderDirection;
 
 struct OrderByNode {
     RelAttrSqlNode attribute;
-    OrderDirection direction;
+    OrderDirection direction = ASC_;
 };
 
 struct InnerJoinNode {
@@ -130,7 +126,8 @@ struct SelectSqlNode
   Expression *                    conditions = nullptr;     ///< 查询条件，使用AND串联起来多个条件
   std::vector<InnerJoinNode>      inner_join_clauses;
   std::vector<OrderByNode>        order_by_nodes;
-  std::vector<RelAttr>            group_by;
+  std::vector<RelAttrSqlNode>     group_by;
+  Expression *                    havings = nullptr;
 };
 
 /**
@@ -192,8 +189,8 @@ struct ConditionSqlNode
 */
 struct SetSqlNode
 {
-  std::string       attribute_name; // update set子句的属性名
-  Value             value;          // update set子句的属性值
+  std::string         attribute_name;  // update set子句的属性名
+  Expression *expr = nullptr;    // ValueExpr or SubQueryExpression
 };
 
 
@@ -204,8 +201,6 @@ struct SetSqlNode
 struct UpdateSqlNode
 {
   std::string                   relation_name;         ///< Relation to update
-  // std::string                   attribute_name;        ///< 更新的字段，仅支持一个字段
-  // Value                         value;                 ///< 更新的值，仅支持一个字段
   std::vector<SetSqlNode>       set_cols;       ///< 更新的所有字段
   Expression*                  conditions = nullptr;
 };

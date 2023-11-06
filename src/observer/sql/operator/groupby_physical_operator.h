@@ -40,7 +40,6 @@ private:
   bool is_new_group_ = true;
   bool is_record_eof_ = false;
 
-  // not own this
   const std::vector<GroupByUnit *> groupby_units_;
 
   std::vector<Value> pre_values_;  // its size equal to groupby_units.size

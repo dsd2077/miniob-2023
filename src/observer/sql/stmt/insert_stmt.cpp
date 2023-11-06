@@ -54,6 +54,10 @@ RC InsertStmt::create(Db *db, const InsertSqlNode &inserts, Stmt *&stmt)
     const FieldMeta *field_meta = table_meta.field(i + sys_field_num);
     const AttrType field_type = field_meta->type();
     const AttrType value_type = values[i].attr_type();
+    // 默认可为空
+    if (AttrType::NULLS == value_type) {
+      continue;
+    }
     if (field_type == DATES && !common::is_valid_date(values[i].get_int())) {
       return RC::INVALID_ARGUMENT;
     }

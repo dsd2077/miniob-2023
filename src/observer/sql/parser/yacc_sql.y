@@ -123,6 +123,10 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LENGTH
         ROUND
         DATE_FORMAT
+        GROUP
+        HAVING
+        TEXT
+
 
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
@@ -146,7 +150,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Relation *                        relation_item;
   std::vector<Relation> *           relation_list;
 
-  std::vector<SetSqlNode> *         set_attrs;
+  SetSqlNode *                      update_item;
+  std::vector<SetSqlNode> *         update_item_list;
 
   char *                            string;
   int                               number;
@@ -183,11 +188,13 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <attr_list>           select_attr
 %type <attr_list>           attr_list
 %type <rel_attr_item>       rel_attr_item
+
 %type <rel_attr_item>       rel_attr
+%type <attr_list>           rel_attr_list
+
 %type <attr_list>           attr_list_index
 
 %type <expression_list>     expression_list
-%type <set_attrs>           set_attr_list
 %type <sql_node>            calc_stmt
 %type <sql_node>            select_stmt     
 %type <sql_node>            insert_stmt
@@ -232,6 +239,12 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <expression>          aggr_func_expr
 %type <expression>          func_expr
 %type <aggr_func_type>      aggr_func_type
+%type <attr_list>           group_by
+%type <expression>          having 
+%type <expression>          having_condition_list 
+%type <expression>          having_condition
+%type <update_item>         update_item
+%type <update_item_list>    update_item_list
 
 
 
@@ -421,15 +434,23 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      $$->length = $4+4;
       free($1);
     }
+    | ID TEXT
+    {
+      $$ = new AttrInfoSqlNode;
+      $$->type = CHARS;
+      $$->name = $1;
+      $$->length = 4000;
+      free($1);
+		}
     |ID type LBRACE number RBRACE NOT NULL_VALUE
 		{
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      $$->length = $4+4;
       free($1);
 		}
     |ID type LBRACE number RBRACE NULL_VALUE
@@ -437,7 +458,7 @@ attr_def:
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
-      $$->length = $4;
+      $$->length = $4+4;
       $$->nullable = true;
       free($1);
 		}
@@ -517,14 +538,11 @@ value:
       $$ = new Value((float)$1);
       @$ = @1;
     }
-    //| SUB NUMBER %prec SUB {
-    //  $$ = new Value(-(int)$2);
-    //  @$ = @1;
-    //}
-    //| SUB FLOAT %prec SUB {
-    //  $$ = new Value(-(float)$2);
-    //  @$ = @1;
-    //}
+    | NULL_VALUE {
+      $$ = new Value(0);
+      $$->set_null();
+      @$ = @1;
+    }
     | DATE {    // T1修改点
       char *tmp = common::substr($1,1,strlen($1)-2);
       $$ = new Value(tmp, 0, true);    // 构建Date类型的Value
@@ -549,49 +567,50 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value set_attr_list where 
+    UPDATE ID SET update_item update_item_list where 
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-
-      SetSqlNode *col = new SetSqlNode;
-      col->attribute_name = $4;
-      col->value = *$6;
-      
-      std::vector<SetSqlNode> *sets = $7;
-      if (nullptr != $7) {
-        $$->update.set_cols.swap(*sets);
-      }
-      $$->update.set_cols.emplace_back(*col);
-
-      if ($8 != nullptr) {
-        $$->update.conditions = $8;
-      }
-      free($2);
-      free($4);
-    }
-    ;
-
-set_attr_list:
-    /* empty */
-    {
-      $$ = nullptr;
-    }
-    | COMMA ID EQ value set_attr_list
-    {
-      $$ = new std::vector<SetSqlNode>;
-      SetSqlNode *col = new SetSqlNode;
-      col->attribute_name = $2;
-      col->value = *$4;
       
       std::vector<SetSqlNode> *sets = $5;
-      if(nullptr != sets) {
-        $$->swap(*sets);
+      if (sets == nullptr) {
+        sets = new std::vector<SetSqlNode>;
       }
-      $$->emplace_back(*col);
-      free($2);
+      sets->emplace_back(*$4);
+      delete $4;
+      $$->update.set_cols.swap(*sets);
+
+      if ($6 != nullptr) {
+        $$->update.conditions = $6;
+      }
     }
     ;
+
+update_item:    // 返回SetSqlNode*
+  ID EQ value {
+    $$ = new SetSqlNode;
+    $$->attribute_name = $1;
+    $$->expr = new ValueExpr(*$3);
+  }
+  | ID EQ sub_select_expr {
+    $$ = new SetSqlNode;
+    $$->attribute_name = $1;
+    $$->expr = $3;
+  }
+  ;
+
+update_item_list: // 返回std::vector<SetSqlNode>*
+  {
+    $$ = nullptr;
+  }
+  | COMMA update_item update_item_list {
+    $$ = $3;
+    if ($$ == nullptr) {
+      $$ = new std::vector<SetSqlNode>;
+    }
+    $$->emplace_back(*$2);
+    delete $2;
+  }
 
 select_stmt:        /*  select 语句的语法解析树*/
     SELECT select_attr SEMICOLON {
@@ -601,7 +620,7 @@ select_stmt:        /*  select 语句的语法解析树*/
         delete $2;
       }
     }
-    | SELECT select_attr FROM from inner_join_list where order_by SEMICOLON
+    | SELECT select_attr FROM from inner_join_list where group_by having order_by SEMICOLON
     {
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
@@ -627,13 +646,78 @@ select_stmt:        /*  select 语句的语法解析树*/
       }
 
       if ($7 != nullptr) {
-        $$->selection.order_by_nodes.swap(*$7);
+        $$->selection.group_by.swap(*$7);
         delete $7;
+      }
+      std::reverse($$->selection.group_by.begin(), $$->selection.group_by.end());   
+
+      if ($8 != nullptr) {
+        $$->selection.havings = $8;
+      }
+
+      if ($9 != nullptr) {
+        $$->selection.order_by_nodes.swap(*$9);
+        delete $9;
       }
       std::reverse($$->selection.order_by_nodes.begin(), $$->selection.order_by_nodes.end());   
 
     }
     ;
+
+group_by:
+	/* empty */ {
+    $$ = nullptr;
+  }
+	| GROUP BY rel_attr {
+    $$ = new std::vector<RelAttrSqlNode>;
+    $$->emplace_back(*$3);
+    delete $3;
+	}
+  | GROUP BY rel_attr rel_attr_list {
+    std::vector<RelAttrSqlNode> *temp = $4;
+    if (nullptr == temp) {
+      temp = new std::vector<RelAttrSqlNode>;
+    }
+    temp->emplace_back(*$3);
+    delete $3;
+    $$ = temp;
+  }
+	;
+
+having:   // 返回ConjunctionExpr*
+  /* empty */  { 
+    $$ = nullptr;
+  }
+  | HAVING having_condition having_condition_list {	
+    ConjunctionExpr *con_expr = dynamic_cast<ConjunctionExpr *>($3);
+    if (nullptr == con_expr) {
+      con_expr = new ConjunctionExpr();
+    }
+    con_expr->add_condition($2);
+    $$ = con_expr;
+  }
+  ;
+
+having_condition_list:    // 返回ConjunctionExpr*
+  /* empty */ {
+    $$ = nullptr;
+  }
+  | AND having_condition having_condition_list {
+    ConjunctionExpr *con_expr = dynamic_cast<ConjunctionExpr *>($3);
+    if (nullptr == con_expr) {
+      con_expr = new ConjunctionExpr();
+    }
+    con_expr->add_condition($2);
+    $$ = con_expr;
+  }
+  ;
+
+having_condition:   // 返回Expression*
+  add_expr comp_op add_expr{
+    ComparisonExpr *comp_expr = new ComparisonExpr($2, $1, $3);
+    $$ = comp_expr;
+  }
+  ;
 
 calc_stmt:
     CALC expression_list
@@ -703,6 +787,20 @@ rel_attr:     // 返回RelAttrSqlNode*
       free($3);
     }
     ;
+
+rel_attr_list:
+  {
+    $$ = nullptr;
+  }
+  | COMMA rel_attr rel_attr_list {
+    std::vector<RelAttrSqlNode> *temp = $3;
+    if (nullptr == temp) {
+      temp = new std::vector<RelAttrSqlNode>;
+    }
+    temp->emplace_back(*$2);
+    $$ = temp;
+  }
+
 attr_list_index:
   {
     $$ = nullptr;
@@ -1071,7 +1169,7 @@ aggr_func_type:
 
 
 sub_select_expr:
-  LBRACE SELECT select_attr FROM from inner_join_list where order_by RBRACE 
+  LBRACE SELECT select_attr FROM from inner_join_list where group_by having order_by RBRACE 
   {
     ParsedSqlNode *temp= new ParsedSqlNode(SCF_SELECT);
     if ($3 != nullptr) {
@@ -1094,8 +1192,18 @@ sub_select_expr:
     }
 
     if ($8 != nullptr) {
-      temp->selection.order_by_nodes.swap(*$8);
+      temp->selection.group_by.swap(*$8);
       delete $8;
+    }
+    std::reverse(temp->selection.group_by.begin(), temp->selection.group_by.end());   
+
+    if ($9 != nullptr) {
+      temp->selection.havings = $9;
+    }
+
+    if ($10 != nullptr) {
+      temp->selection.order_by_nodes.swap(*$10);
+      delete $10;
     }
     SubQueryExpression *res = new SubQueryExpression(temp);
     $$ = res;

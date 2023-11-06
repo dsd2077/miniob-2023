@@ -21,6 +21,8 @@ See the Mulan PSL v2 for more details. */
 #include "common/io/io.h"
 #include "common/log/log.h"
 #include "sql/operator/project_physical_operator.h"
+#include "sql/parser/parse_defs.h"
+#include <string>
 
 PlainCommunicator::PlainCommunicator()
 {
@@ -197,6 +199,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   }
 
   Tuple *tuple = nullptr;
+  bool empty_result = true;
   while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {
     std::string new_line;
     assert(tuple != nullptr);
@@ -224,8 +227,46 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       sql_result->close();
       return rc;
     }
+    empty_result = false;
   }
-
+  // 如果结果为空，需要给聚集函数输出NULL
+  if (empty_result && project_oper != nullptr) {
+    bool is_all_aggfunc = true;
+    for (int i = 0; i < project_oper->cell_num(); i++) {
+      Expression *temp = nullptr;
+      project_oper->expression_at(i, temp);
+      if (ExprType::AGGRFUNC != temp->type()) {
+        is_all_aggfunc = false;
+        break;
+      }
+    }
+    if (is_all_aggfunc) {
+      std::string res;
+      for (int i = 0; i < project_oper->cell_num(); i++) {
+        if (i != 0) {
+          res += " | ";
+        }
+        Expression *expr;
+        project_oper->expression_at(i, expr);
+        AggrFuncExpression * agg_expr = dynamic_cast<AggrFuncExpression*>(expr);
+        if (AggrFuncType::CNT == agg_expr->get_aggr_func_type()) {
+          Value value(0);
+          res += value.to_string();
+        } else {
+          Value value;
+          value.set_null();
+          res += value.to_string();
+        }
+      }
+      res += '\n';
+      rc = writer_->writen(res.c_str(), res.size());
+      if (OB_FAIL(rc)) {
+        LOG_WARN("failed to send data to client. err=%s", strerror(errno));
+        sql_result->close();
+        return rc;
+      }
+    }
+  }
   if (rc == RC::RECORD_EOF) {
     rc = RC::SUCCESS;
   }

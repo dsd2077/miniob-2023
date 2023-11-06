@@ -396,6 +396,22 @@ RC Table::create_index(Trx *trx, std::vector<FieldMeta> &field_meta, const char 
   //   return RC::INVALID_ARGUMENT;
   // }
 
+  // 检查：是否已经有索引存在
+  std::vector<const char *> fields_names;
+  for(int i = 0 ; i < field_meta.size() ; i ++ ) {
+    if(common::is_blank(field_meta[i].name())) {
+      LOG_ERROR("index column has empty feature!");
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    fields_names.emplace_back(field_meta[i].name());
+  }
+
+  const IndexMeta *check_index_meta = table_meta_.find_index_by_fields(fields_names);
+  if(nullptr != check_index_meta) {
+    LOG_ERROR("Attributes index exists! Cannot create another index on them!");
+    return RC::SCHEMA_INDEX_ATTR_EXIST;
+  }
+
   IndexMeta new_index_meta;
   RC rc = new_index_meta.init(index_name, field_meta);  // 初始化索引元信息
   if (rc != RC::SUCCESS) {
@@ -489,6 +505,22 @@ RC Table::create_unique_index(Trx *trx, std::vector<FieldMeta> &fields_metas, co
   if(common::is_blank(index_name) || fields_metas.size() == 0) {
     LOG_INFO("Invalid input arguments, table name is %s, index_name is blank or attribute_name is blank", name());
     return RC::INVALID_ARGUMENT;
+  }
+
+  // 检查：是否已经有索引存在
+  std::vector<const char *> fields_names;
+  for(int i = 0 ; i < fields_metas.size() ; i ++ ) {
+    if(common::is_blank(fields_metas[i].name())) {
+      LOG_ERROR("index column has empty feature!");
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    fields_names.emplace_back(fields_metas[i].name());
+  }
+
+  const IndexMeta *check_index_meta = table_meta_.find_index_by_fields(fields_names);
+  if(nullptr != check_index_meta) {
+    LOG_ERROR("Attributes index exists! Cannot create another index on them!");
+    return RC::SCHEMA_INDEX_ATTR_EXIST;
   }
 
   IndexMeta new_index_meta;

@@ -48,6 +48,7 @@ See the Mulan PSL v2 for more details. */
   DEFINE_RC(SCHEMA_FIELD_MISSING)           \
   DEFINE_RC(SCHEMA_FIELD_TYPE_MISMATCH)     \
   DEFINE_RC(SCHEMA_INDEX_NAME_REPEAT)       \
+  DEFINE_RC(SCHEMA_INDEX_ATTR_EXIST)        \
   DEFINE_RC(IOERR_READ)                     \
   DEFINE_RC(IOERR_WRITE)                    \
   DEFINE_RC(IOERR_ACCESS)                   \

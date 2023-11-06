@@ -523,13 +523,140 @@ RC Table::create_unique_index(Trx *trx, std::vector<FieldMeta> &fields_metas, co
     return RC::SCHEMA_INDEX_ATTR_EXIST;
   }
 
+  // 检查：当前表中该列是否有重复值，有重复值则不创建
+  RecordFileScanner check_scanner;
+  RC rc;
+  for(int i = 0 ; i < fields_metas.size() ; i ++ ) {
+    if(fields_metas[i].type() == AttrType::INTS || fields_metas[i].type() == AttrType::DATES) {
+      // 整数或日期类型
+      std::set<int> check_set;  // 集合检查
+      rc = get_record_scanner(check_scanner, trx, true);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", 
+                name(), index_name, strrc(rc));
+        return rc;
+      }
+      Record check_record;
+      while (check_scanner.has_next()) {
+        rc = check_scanner.next(check_record);
+        if (rc != RC::SUCCESS) {
+          LOG_WARN("failed to scan records while creating index. table=%s, index=%s, rc=%s",
+                  name(), index_name, strrc(rc));
+          return rc;
+        }
+        // 检查当前列是否有重复
+        char *record_data = new (std::nothrow) char[fields_metas[i].len()];
+        memcpy(record_data, check_record.data() + fields_metas[i].offset(), fields_metas[i].len());
+        int val = *(int *)(record_data);
+        if(check_set.contains(val)) {
+          LOG_ERROR("Fail to create unique index, because has repeat val in attr.");
+          return RC::RECORD_DUPLICATE_KEY;
+        }
+        check_set.insert(val);
+      }
+      check_scanner.close_scan();
+
+    }else if(fields_metas[i].type() == AttrType::FLOATS) {
+      // 浮点数
+
+      std::set<float> check_set;  // 集合检查
+      rc = get_record_scanner(check_scanner, trx, true);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", 
+                name(), index_name, strrc(rc));
+        return rc;
+      }
+      Record check_record;
+      while (check_scanner.has_next()) {
+        rc = check_scanner.next(check_record);
+        if (rc != RC::SUCCESS) {
+          LOG_WARN("failed to scan records while creating index. table=%s, index=%s, rc=%s",
+                  name(), index_name, strrc(rc));
+          return rc;
+        }
+        // 检查当前列是否有重复
+        char *record_data = new (std::nothrow) char[fields_metas[i].len()];
+        memcpy(record_data, check_record.data() + fields_metas[i].offset(), fields_metas[i].len());
+        float val = *(float *)(record_data);
+        if(check_set.contains(val)) {
+          LOG_ERROR("Fail to create unique index, because has repeat val in attr.");
+          return RC::RECORD_DUPLICATE_KEY;
+        }
+        check_set.insert(val);
+      }
+      check_scanner.close_scan();
+
+    }else if(fields_metas[i].type() == AttrType::CHARS) {
+
+      // 字符串
+
+      std::set<std::string> check_set;  // 集合检查
+      rc = get_record_scanner(check_scanner, trx, true);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", 
+                name(), index_name, strrc(rc));
+        return rc;
+      }
+      Record check_record;
+      while (check_scanner.has_next()) {
+        rc = check_scanner.next(check_record);
+        if (rc != RC::SUCCESS) {
+          LOG_WARN("failed to scan records while creating index. table=%s, index=%s, rc=%s",
+                  name(), index_name, strrc(rc));
+          return rc;
+        }
+        // 检查当前列是否有重复
+        char *record_data = new (std::nothrow) char[fields_metas[i].len()];
+        memcpy(record_data, check_record.data() + fields_metas[i].offset(), fields_metas[i].len());
+        std::string val(record_data);
+        if(check_set.contains(val)) {
+          LOG_ERROR("Fail to create unique index, because has repeat val in attr.");
+          return RC::RECORD_DUPLICATE_KEY;
+        }
+        check_set.insert(val);
+      }
+      check_scanner.close_scan();
+
+    }else if(fields_metas[i].type() == AttrType::BOOLEANS) {
+      // 布尔值
+
+      std::set<bool> check_set;  // 集合检查
+      rc = get_record_scanner(check_scanner, trx, true);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("failed to create scanner while creating index. table=%s, index=%s, rc=%s", 
+                name(), index_name, strrc(rc));
+        return rc;
+      }
+      Record check_record;
+      while (check_scanner.has_next()) {
+        rc = check_scanner.next(check_record);
+        if (rc != RC::SUCCESS) {
+          LOG_WARN("failed to scan records while creating index. table=%s, index=%s, rc=%s",
+                  name(), index_name, strrc(rc));
+          return rc;
+        }
+        // 检查当前列是否有重复
+        char *record_data = new (std::nothrow) char[fields_metas[i].len()];
+        memcpy(record_data, check_record.data() + fields_metas[i].offset(), fields_metas[i].len());
+        bool val = *(bool *)(record_data);
+        if(check_set.contains(val)) {
+          LOG_ERROR("Fail to create unique index, because has repeat val in attr.");
+          return RC::RECORD_DUPLICATE_KEY;
+        }
+      }
+      check_scanner.close_scan();
+    }
+    
+  }
+  LOG_INFO("check all existed records, all legal, ready to create unique index. table=%s, index=%s", name(), index_name);
+
   IndexMeta new_index_meta;
   new_index_meta.init(index_name, fields_metas);
   new_index_meta.set_type(IndexType::UNIQUE_INDEX); // 设置：唯一索引
 
   BplusTreeIndex *tree_index = new BplusTreeIndex();  // 创建B+树索引
   std::string index_file_name = table_index_file(base_dir_.c_str(), name(), index_name);
-  RC rc = tree_index->create(index_file_name.c_str(), new_index_meta, fields_metas, false);   // 唯一索引：不允许重复键值
+  rc = tree_index->create(index_file_name.c_str(), new_index_meta, fields_metas, false);   // 唯一索引：不允许重复键值
   if (rc != RC::SUCCESS) {
     delete tree_index;
     LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file_name.c_str(), rc, strrc(rc));

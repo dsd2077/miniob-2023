@@ -273,6 +273,7 @@ RC RecordPageHandler::update_record(const RID *rid,
   for(int i = 0 ; i < fields_metas.size() ; i ++ ) {
     memcpy(record_data + fields_metas[i].offset(), values[i].data(), fields_metas[i].len());  // 按照字段写记录
   }
+  frame_->mark_dirty();
   // memcpy(record_data + field_meta->offset(), value.data(), field_meta->len());
   return RC::SUCCESS;
 }
@@ -281,6 +282,7 @@ RC RecordPageHandler::set_record(const char *data, const RID &rid, int len)
 {
   char *record_data = get_record_data(rid.slot_num);
   memcpy(record_data, data, len);
+  frame_->mark_dirty();
   return RC::SUCCESS;
 }
 

@@ -22,7 +22,6 @@ See the Mulan PSL v2 for more details. */
  * @brief 属性的类型
  * 
  */
- // TODO:语法解析如何将值的类型与AttrType联系起来的？最关键的问题，这个问题解决了，就可以回去睡觉了。
 enum AttrType
 {
   UNDEFINED,

@@ -492,7 +492,6 @@ attr_def:
 number:
     NUMBER {$$ = $1;}
     ;
-// TODO:关键点：这里进行类型映射
 type:
     INT_T      { $$=INTS; }
     | DATE_T    {$$=DATES;}   // T1修改点
@@ -1227,16 +1226,16 @@ sub_select_list:
 
 func_expr:
   LENGTH LBRACE add_expr RBRACE {
-    $$ = new FuncExpression(FUNC_LENGTH, 1, $3, nullptr, true);
+    $$ = new FuncExpression(FUNC_LENGTH, 1, $3, nullptr);
   }
   | ROUND LBRACE add_expr RBRACE {
-    $$ = new FuncExpression(FUNC_ROUND, 1, $3, nullptr, true);
+    $$ = new FuncExpression(FUNC_ROUND, 1, $3, nullptr);
   }
   | ROUND LBRACE add_expr COMMA add_expr RBRACE {
-    $$ = new FuncExpression(FUNC_ROUND, 2, $3, $5, true);
+    $$ = new FuncExpression(FUNC_ROUND, 2, $3, $5);
   }
   | DATE_FORMAT LBRACE add_expr COMMA add_expr RBRACE {
-    $$ = new FuncExpression(FUNC_DATE_FORMAT, 2, $3, $5, true);
+    $$ = new FuncExpression(FUNC_DATE_FORMAT, 2, $3, $5);
   }
   ;
 

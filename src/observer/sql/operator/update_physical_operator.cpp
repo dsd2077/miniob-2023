@@ -10,6 +10,7 @@
 #include "common/log/log.h"
 #include "sql/operator/update_physical_operator.h"
 #include "sql/parser/parse_defs.h"
+#include "sql/parser/value.h"
 #include "storage/record/record.h"
 #include "storage/table/table.h"
 #include "storage/trx/trx.h"
@@ -83,6 +84,33 @@ RC UpdatePhysicalOperator::next()
         }
       } else {
         expr->get_value(*row_tuple, values.back());
+      }
+    }
+    // 需要在这里进行类型检查，要怎么拿到fieldMeta信息？如果类型不一致要进行类型转换啊
+    std::vector<const FieldMeta *> &field_meta = update_stmt_->fields();
+    for (size_t i = 0; i < values.size(); i++) {
+      if (field_meta[i]->type() != values[i].attr_type()) {
+        //尝试进行类型转换
+        if (values[i].attr_type() == AttrType::NULLS) {
+          values[i].set_type(field_meta[i]->type());
+          continue;
+        }
+        switch (field_meta[i]->type()) {
+          case DATES:
+          case INTS: {
+            values[i] = Value(values[i].get_int());
+          } break;
+          case FLOATS: {
+            values[i] = Value(values[i].get_float());
+          } break;
+          case CHARS: {
+            std::string temp = values[i].get_string();
+            values[i] = Value(temp.c_str(), temp.size());
+          } break;
+          default: {
+            LOG_ERROR("unsuportted type cast!");
+          }
+        }
       }
     }
     rc = trx_->update_record(update_stmt_->table(), record, values, update_stmt_->attributes_names());

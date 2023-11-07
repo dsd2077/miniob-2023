@@ -205,5 +205,4 @@ private:
   float       float_value_;
   bool        bool_value_;
   std::string str_value_;
-  bool is_null_ ;      // 是否可为空
 };

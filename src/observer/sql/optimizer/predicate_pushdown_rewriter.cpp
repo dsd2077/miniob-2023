@@ -52,6 +52,7 @@ RC PredicatePushdownRewriter::rewrite(std::unique_ptr<LogicalOperator> &oper, bo
   if (!predicate_expr) {
     // 所有的表达式都下推到了下层算子
     // 这个predicate operator其实就可以不要了。但是这里没办法删除，弄一个空的表达式吧
+    // 注：待会会再次进行rewrite操作，会在predicate_rewrite中将这个predicate_oper删除
     LOG_TRACE("all expressions of predicate operator were pushdown to table get operator, then make a fake one");
 
     Value value((bool)true);
@@ -92,8 +93,8 @@ RC PredicatePushdownRewriter::get_exprs_can_pushdown(
         return rc;
       }
 
-      if (!*iter) {
-        child_exprs.erase(iter);
+      if (!*iter) {   // 当前元素被转移走了，*iter = nullptr
+        iter = child_exprs.erase(iter);
       } else {
         ++iter;
       }

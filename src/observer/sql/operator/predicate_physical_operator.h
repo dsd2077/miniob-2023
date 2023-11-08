@@ -43,5 +43,5 @@ public:
   Tuple *current_tuple() override;
 
 private:
-  std::unique_ptr<Expression> expression_;      // ConjunctionExpr
+  std::unique_ptr<Expression> expression_;      
 };

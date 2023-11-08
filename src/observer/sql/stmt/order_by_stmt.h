@@ -69,18 +69,11 @@ public:
   static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
       const std::vector<OrderByNode> & orderbys, OrderByStmt *&stmt);
 
-  // the func used for creating orderby_stmt for groupby
-  // static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
-  //     const GroupBy *groupbys, int groupby_num, OrderByStmt *&stmt);
-
   static RC create_orderby_unit(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
       const OrderByNode &orderby, OrderByUnit *&orderby_unit);
 
-  // static RC create_orderby_unit(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *tables,
-  //     const GroupBy &groupby, OrderByUnit *&orderby_unit);
-
 private:
-  std::vector<OrderByUnit *> orderby_units_;      // OrderByUnit会在哪里消亡？
+  std::vector<OrderByUnit *> orderby_units_;
 };
 
 

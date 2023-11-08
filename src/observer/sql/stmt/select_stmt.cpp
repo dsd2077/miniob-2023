@@ -369,14 +369,14 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, const std::unorde
 
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
-  // TODO add expression copy
   select_stmt->tables_.swap(tables);
   select_stmt->query_fields_.swap(query_fields);
-  select_stmt->filter_stmt_ = filter_stmt;
-  select_stmt->inner_join_filter_stmt_ = inner_join_filter_stmt;
-  select_stmt->orderby_stmt_ = orderby_stmt;
-  select_stmt->groupby_stmt_ = groupby_stmt;
-  select_stmt->having_stmt_ = having_stmt;
+
+  select_stmt->filter_stmt_              = filter_stmt;
+  select_stmt->orderby_stmt_             = orderby_stmt;
+  select_stmt->groupby_stmt_             = groupby_stmt;
+  select_stmt->having_stmt_              = having_stmt;
+  select_stmt->inner_join_filter_stmt_   = inner_join_filter_stmt;
   select_stmt->orderby_stmt_for_groupby_ = orderby_stmt_for_groupby;
 
   stmt = select_stmt;

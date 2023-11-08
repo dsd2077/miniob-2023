@@ -345,7 +345,6 @@ RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
     SubQueryExpression *sub_query = static_cast<SubQueryExpression*>(right_.get());
     
     sub_query->open_sub_query();
-    // TODO compound with parent tuple
     RC tmp_rc = sub_query->get_value(tuple, right_value);
     if (RC::SUCCESS != tmp_rc && RC::RECORD_EOF != tmp_rc) {
       return tmp_rc;

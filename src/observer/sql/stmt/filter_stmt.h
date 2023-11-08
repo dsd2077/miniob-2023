@@ -45,10 +45,6 @@ public:
     predicate_ = std::unique_ptr<Expression>(predicate);
   }
 
-  // ConjunctionExpr::Type conjunction_type() const { return predicate_->type(); }
-
-  // void set_conjunction_type(ConjunctionExpr::Type type) { type_ = type; }
-
 public:
   static RC create(Db *db, Table *default_table, std::unordered_map<std::string, Table *> *table_map,
       Expression *conditions, FilterStmt *&stmt);

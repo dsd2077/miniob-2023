@@ -61,7 +61,7 @@ RC InsertStmt::create(Db *db, const InsertSqlNode &inserts, Stmt *&stmt)
     if (field_type == DATES && !common::is_valid_date(values[i].get_int())) {
       return RC::INVALID_ARGUMENT;
     }
-    if (field_type != value_type) {  // TODO try to convert the value type to field type
+    if (field_type != value_type) {  //  try to convert the value type to field typTODOe
       LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
           table_name, field_meta->name(), field_type, value_type);
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;

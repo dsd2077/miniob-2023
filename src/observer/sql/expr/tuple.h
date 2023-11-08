@@ -185,7 +185,7 @@ public:
     assert(record.size() >= 1);
     Record *temp_record = record.front();
     set_record(record.front());
-    record.erase(record.begin());   // TODO:这里存在内存泄漏
+    record.erase(record.begin());   
   }
 
   void set_schema(const Table *table, const std::vector<FieldMeta> *fields)

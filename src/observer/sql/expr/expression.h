@@ -498,17 +498,9 @@ private:
 class AggrFuncExpression : public Expression {
 public:
   AggrFuncExpression() = default;
-  AggrFuncExpression(AggrFuncType type, FieldExpr *field) : type_(type), field_(field)
-  {}
-  AggrFuncExpression(AggrFuncType type, ValueExpr *value) : type_(type), value_(value)
-  {}
-
-  AggrFuncExpression(AggrFuncType type, FieldExpr *field, bool with_brace) : AggrFuncExpression(type, field)
-  {
-    // if (with_brace) {
-    //   set_with_brace();
-    // }
-  }
+  AggrFuncExpression(AggrFuncType type, FieldExpr *field) : type_(type), field_(field) {}
+  AggrFuncExpression(AggrFuncType type, ValueExpr *value) : type_(type), value_(value) {}
+  AggrFuncExpression(AggrFuncType type, FieldExpr *field, bool with_brace) : AggrFuncExpression(type, field) {}
 
   virtual ~AggrFuncExpression() = default;
 
@@ -573,12 +565,9 @@ private:
 class FuncExpression : public Expression {
 public:
   FuncExpression() = default;
-  FuncExpression(FuncType func_type, int param_size, Expression *param1, Expression *param2 , bool with_brace )
+  FuncExpression(FuncType func_type, int param_size, Expression *param1, Expression *param2 )
       : func_type_(func_type), param_size_(param_size)
   {
-    if (with_brace) {
-      set_with_brace();
-    }
     if (param1 != nullptr) {
       params_expr_.emplace_back(param1);
     }
@@ -640,9 +629,6 @@ public:
       }
     }
   }
-
-  
-
 
   FuncType get_func_type()
   {

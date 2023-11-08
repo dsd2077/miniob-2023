@@ -899,8 +899,8 @@ rel_list:     // 返回std::vector<Relation> *
     std::vector<Relation> * temp = $3;
     if (temp == nullptr) {
       temp = new std::vector<Relation>;
-      temp->emplace_back(*$2);
     }
+    temp->emplace_back(*$2);
     $$ = temp;
   }
   
@@ -921,11 +921,6 @@ rel_item:   // 返回 Relation *
   }
   ;
     
-
-/**
- *dengshudong添加的语法规则
-*/
-
 // inner join语法规则
 inner_join_list:  // 返回std::vector<InnerJoinNode> *
     /* empty */
